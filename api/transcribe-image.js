@@ -6,8 +6,20 @@ export default async function handler(req, res) {
 
   const { image, mediaType } = req.body;
 
-  if (!image || !mediaType) {
-    return res.status(400).json({ error: 'Image and media type required' });
+  if (!image) {
+    return res.status(400).json({ error: 'Image required' });
+  }
+
+  // Normalize media type - Anthropic only accepts these 4 types
+  const supportedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+  let normalizedMediaType = mediaType?.toLowerCase() || 'image/jpeg';
+  
+  // Map common unsupported types to supported ones
+  if (normalizedMediaType === 'image/heic' || normalizedMediaType === 'image/heif') {
+    normalizedMediaType = 'image/jpeg';
+  } else if (!supportedTypes.includes(normalizedMediaType)) {
+    // Default to jpeg for any unknown type
+    normalizedMediaType = 'image/jpeg';
   }
 
   try {
@@ -28,13 +40,13 @@ export default async function handler(req, res) {
               type: "image",
               source: {
                 type: "base64",
-                media_type: mediaType,
+                media_type: normalizedMediaType,
                 data: image
               }
             },
             {
               type: "text",
-              text: "Please transcribe this handwritten journal entry exactly as written. Preserve the person's voice and any quirks in their writing. Just output the transcription, nothing else."
+              text: "Please transcribe this handwritten journal entry exactly as written. Preserve the person's voice, line breaks, and any crossed out words (mark those with strikethrough). If you can't read certain words, use [unclear] as a placeholder. Only output the transcribed text, nothing else."
             }
           ]
         }]
@@ -42,7 +54,7 @@ export default async function handler(req, res) {
     });
 
     const data = await response.json();
-    
+
     if (data.error) {
       console.error('Anthropic API error:', data.error);
       return res.status(500).json({ error: 'Transcription failed' });
