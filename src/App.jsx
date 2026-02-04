@@ -320,7 +320,35 @@ export default function MyUnfolding() {
     }
   };
   
-  // Transcribe handwritten journal from image - FIXED: Uses API route
+  // Convert any image to JPEG using Canvas (handles HEIC, etc.)
+  const convertImageToJpeg = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          // Create canvas and draw image
+          const canvas = document.createElement('canvas');
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0);
+          
+          // Export as JPEG base64 (without the data:image/jpeg;base64, prefix)
+          const base64 = canvas.toDataURL('image/jpeg', 0.9).split(',')[1];
+          resolve(base64);
+        };
+        img.onerror = () => reject(new Error('Failed to load image'));
+        img.src = e.target.result;
+      };
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // Transcribe handwritten journal from image - FIXED: Converts to JPEG first
   const handleImageUpload = async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -328,20 +356,15 @@ export default function MyUnfolding() {
     setIsTranscribing(true);
     
     try {
-      // Convert to base64
-      const base64 = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result.split(',')[1]);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
+      // Convert image to JPEG (handles HEIC, PNG, etc.)
+      const base64 = await convertImageToJpeg(file);
       
       const response = await fetch("/api/transcribe-image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           image: base64,
-          mediaType: file.type
+          mediaType: "image/jpeg"
         })
       });
       
