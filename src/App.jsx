@@ -320,7 +320,7 @@ export default function MyUnfolding() {
     }
   };
   
-  // Transcribe handwritten journal from image (supports HEIC from iPhone)
+  // Transcribe handwritten journal from image - server handles HEIC conversion
   const handleImageUpload = async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -328,93 +328,29 @@ export default function MyUnfolding() {
     setIsTranscribing(true);
     
     try {
-      let base64;
-      let mediaType = 'image/jpeg';
-      
-      const fileType = file.type.toLowerCase();
+      // Get file type
+      let mediaType = file.type.toLowerCase();
       const fileName = file.name.toLowerCase();
-      const isHeic = fileType === 'image/heic' || fileType === 'image/heif' || fileName.endsWith('.heic') || fileName.endsWith('.heif');
       
-      if (isHeic) {
-        // Try HEIC conversion
-        try {
-          if (!window.heic2any) {
-            await new Promise((resolve, reject) => {
-              const script = document.createElement('script');
-              script.src = 'https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js';
-              script.onload = resolve;
-              script.onerror = reject;
-              document.head.appendChild(script);
-            });
-          }
-          
-          const convertedBlob = await window.heic2any({
-            blob: file,
-            toType: 'image/jpeg',
-            quality: 0.9
-          });
-          
-          base64 = await new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result.split(',')[1]);
-            reader.onerror = reject;
-            reader.readAsDataURL(convertedBlob);
-          });
-          mediaType = 'image/jpeg';
-        } catch (heicError) {
-          console.error('HEIC conversion failed:', heicError);
-          alert('Could not process this iPhone photo. Try one of these:\n\n1. Open the photo in Photos app, tap Edit, make any small change, then Save\n2. Take a screenshot of the photo\n3. Share it to yourself via email/messages (it converts automatically)');
-          setIsTranscribing(false);
-          if (fileInputRef.current) fileInputRef.current.value = '';
-          return;
-        }
-      } else {
-        // For non-HEIC images, use Canvas to ensure compatibility
-        try {
-          const dataUrl = await new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result);
-            reader.onerror = reject;
-            reader.readAsDataURL(file);
-          });
-          
-          // Load into image and redraw on canvas
-          const img = await new Promise((resolve, reject) => {
-            const image = new Image();
-            image.onload = () => resolve(image);
-            image.onerror = reject;
-            image.src = dataUrl;
-          });
-          
-          const canvas = document.createElement('canvas');
-          canvas.width = img.width;
-          canvas.height = img.height;
-          const ctx = canvas.getContext('2d');
-          ctx.fillStyle = '#FFFFFF';
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
-          ctx.drawImage(img, 0, 0);
-          
-          base64 = canvas.toDataURL('image/jpeg', 0.9).split(',')[1];
-          mediaType = 'image/jpeg';
-        } catch (canvasError) {
-          // Fallback: send original file
-          console.error('Canvas conversion failed, sending original:', canvasError);
-          base64 = await new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result.split(',')[1]);
-            reader.onerror = reject;
-            reader.readAsDataURL(file);
-          });
-          mediaType = fileType || 'image/jpeg';
-        }
+      // Detect HEIC even if browser doesn't report correct type
+      if (fileName.endsWith('.heic') || fileName.endsWith('.heif')) {
+        mediaType = 'image/heic';
       }
+      
+      // Convert to base64
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
       
       const response = await fetch("/api/transcribe-image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           image: base64,
-          mediaType: mediaType
+          mediaType: mediaType || 'image/jpeg'
         })
       });
       
@@ -429,7 +365,7 @@ export default function MyUnfolding() {
       }
     } catch (error) {
       console.error('Transcription error:', error);
-      alert('Could not transcribe the image. Please try again.');
+      alert('Could not transcribe the image. Try a different photo or take a screenshot of your journal page.');
     }
     
     setIsTranscribing(false);
