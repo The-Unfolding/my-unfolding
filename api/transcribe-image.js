@@ -69,7 +69,7 @@ export default async function handler(req, res) {
             },
             {
               type: "text",
-              text: "Please transcribe this handwritten journal entry exactly as written. Preserve the person's voice, line breaks, and any crossed out words (mark those with strikethrough). If you can't read certain words, use [unclear] as a placeholder. Only output the transcribed text, nothing else."
+              text: "Transcribe the handwritten text in this image EXACTLY and VERBATIM. Copy every word precisely as written - do not interpret, summarize, paraphrase, or improve the writing. Include all words, even if they seem incomplete or contain errors. Preserve original spelling, punctuation, and line breaks. Output ONLY the exact transcribed text, nothing else."
             }
           ]
         }]
