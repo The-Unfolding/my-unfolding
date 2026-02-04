@@ -177,8 +177,15 @@ export default function MyUnfolding() {
   const [chatInput, setChatInput] = useState('');
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [chatChart, setChatChart] = useState(null);
+  const [voiceSupported, setVoiceSupported] = useState(false);
   const fileInputRef = useRef(null);
-  const mediaRecorderRef = useRef(null);
+  const recognitionRef = useRef(null);
+
+  // Check for Web Speech API support
+  useEffect(() => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    setVoiceSupported(!!SpeechRecognition);
+  }, []);
 
   useEffect(() => {
     const saved = localStorage.getItem('myUnfoldingJournal');
@@ -216,11 +223,9 @@ export default function MyUnfolding() {
 
   const selectIntentionReflection = () => {
     if (reflectOnIntentions) {
-      // Turn off
       setReflectOnIntentions(false);
       setCurrentPrompt(null);
     } else {
-      // Turn on
       setSelectedPhase(null);
       setReflectOnIntentions(true);
       setCurrentPrompt("How am I showing up for my intentions? What's supporting me? What's getting in the way?");
@@ -255,7 +260,6 @@ export default function MyUnfolding() {
     setCurrentPrompt(null);
     setReflectOnIntentions(false);
     
-    // Check for milestones
     const milestones = [10, 25, 50, 100];
     if (milestones.includes(newEntries.length)) {
       setShowConfetti(true);
@@ -264,7 +268,6 @@ export default function MyUnfolding() {
       setTimeout(() => setShowConfetti(false), 3000);
       setTimeout(() => setShowCelebration(false), 4000);
     } else {
-      // Regular affirmation
       setAffirmation(AFFIRMATIONS[Math.floor(Math.random() * AFFIRMATIONS.length)]);
       setShowAffirmation(true);
       setTimeout(() => setShowAffirmation(false), 2500);
@@ -299,7 +302,6 @@ export default function MyUnfolding() {
       }, ...prev]);
       setIntentions(prev => prev.filter(i => i.id !== id));
       
-      // Celebration!
       setShowConfetti(true);
       setCelebrationMessage(CELEBRATION_MESSAGES[Math.floor(Math.random() * CELEBRATION_MESSAGES.length)]);
       setShowCelebration(true);
@@ -318,7 +320,7 @@ export default function MyUnfolding() {
     }
   };
   
-  // Transcribe handwritten journal from image
+  // Transcribe handwritten journal from image - FIXED: Uses API route
   const handleImageUpload = async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -334,37 +336,23 @@ export default function MyUnfolding() {
         reader.readAsDataURL(file);
       });
       
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
+      const response = await fetch("/api/transcribe-image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 2000,
-          messages: [{
-            role: "user",
-            content: [
-              {
-                type: "image",
-                source: {
-                  type: "base64",
-                  media_type: file.type,
-                  data: base64
-                }
-              },
-              {
-                type: "text",
-                text: "Please transcribe this handwritten journal entry exactly as written. Preserve the person's voice and any quirks in their writing. Just output the transcription, nothing else."
-              }
-            ]
-          }]
+          image: base64,
+          mediaType: file.type
         })
       });
       
       const data = await response.json();
-      const transcription = data.content?.[0]?.text || "";
       
-      if (transcription) {
-        setCurrentEntry(prev => prev ? prev + "\n\n" + transcription : transcription);
+      if (data.error) {
+        throw new Error(data.error);
+      }
+      
+      if (data.transcription) {
+        setCurrentEntry(prev => prev ? prev + "\n\n" + data.transcription : data.transcription);
       }
     } catch (error) {
       console.error('Transcription error:', error);
@@ -375,88 +363,70 @@ export default function MyUnfolding() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  // Voice recording
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = mediaRecorder;
-      const chunks = [];
-      
-      mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
-      mediaRecorder.onstop = async () => {
-        const blob = new Blob(chunks, { type: 'audio/webm' });
-        stream.getTracks().forEach(track => track.stop());
-        
-        // Convert to base64 and transcribe
-        setIsTranscribing(true);
-        const base64 = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result.split(',')[1]);
-          reader.onerror = reject;
-          reader.readAsDataURL(blob);
-        });
-        
-        try {
-          const response = await fetch("https://api.anthropic.com/v1/messages", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              model: "claude-sonnet-4-20250514",
-              max_tokens: 2000,
-              messages: [{
-                role: "user",
-                content: [
-                  {
-                    type: "document",
-                    source: {
-                      type: "base64",
-                      media_type: "audio/webm",
-                      data: base64
-                    }
-                  },
-                  {
-                    type: "text",
-                    text: "Please transcribe this audio exactly as spoken. Preserve the person's voice and any pauses or emphasis. Just output the transcription, nothing else."
-                  }
-                ]
-              }]
-            })
-          });
-          
-          const data = await response.json();
-          const transcription = data.content?.[0]?.text || "";
-          
-          if (transcription) {
-            setCurrentEntry(prev => prev ? prev + "\n\n" + transcription : transcription);
-          }
-        } catch (error) {
-          console.error('Transcription error:', error);
-          alert('Could not transcribe. Please try again.');
-        }
-        setIsTranscribing(false);
-      };
-      
-      mediaRecorder.start();
-      setIsRecording(true);
-    } catch (error) {
-      console.error('Recording error:', error);
-      alert('Could not access microphone.');
+  // Voice recording - FIXED: Uses Web Speech API (works in browser, no API needed)
+  const startRecording = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert('Voice recording is not supported in your browser. Try Chrome or Edge.');
+      return;
     }
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+
+    let finalTranscript = '';
+
+    recognition.onresult = (event) => {
+      let interimTranscript = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalTranscript += transcript + ' ';
+        } else {
+          interimTranscript += transcript;
+        }
+      }
+      // Update entry with final + interim (interim shows what's being said)
+      setCurrentEntry(prev => {
+        const base = prev.replace(/\[listening...\].*$/, '').trim();
+        const newText = finalTranscript + (interimTranscript ? `[listening...] ${interimTranscript}` : '');
+        return base ? base + '\n\n' + newText : newText;
+      });
+    };
+
+    recognition.onerror = (event) => {
+      console.error('Speech recognition error:', event.error);
+      if (event.error === 'not-allowed') {
+        alert('Microphone access denied. Please allow microphone access and try again.');
+      }
+      setIsRecording(false);
+    };
+
+    recognition.onend = () => {
+      // Clean up interim text when done
+      setCurrentEntry(prev => prev.replace(/\[listening...\].*$/, '').trim());
+      setIsRecording(false);
+    };
+
+    recognitionRef.current = recognition;
+    recognition.start();
+    setIsRecording(true);
   };
 
   const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+      recognitionRef.current = null;
     }
+    setIsRecording(false);
   };
 
   // Simple markdown renderer for chat
   const renderMarkdown = (text) => {
     if (!text) return null;
     
-    // Split into lines
     const lines = text.split('\n');
     const elements = [];
     let currentList = [];
@@ -464,11 +434,9 @@ export default function MyUnfolding() {
     lines.forEach((line, i) => {
       const trimmed = line.trim();
       
-      // Check if it's a bullet point
       if (trimmed.startsWith('- ') || trimmed.startsWith('• ') || trimmed.startsWith('* ')) {
         currentList.push(trimmed.substring(2));
       } else {
-        // If we have accumulated bullets, render them
         if (currentList.length > 0) {
           elements.push(
             <ul key={`list-${i}`} className="list-disc list-inside my-2 space-y-1">
@@ -482,7 +450,6 @@ export default function MyUnfolding() {
           currentList = [];
         }
         
-        // Render regular paragraph (skip empty lines)
         if (trimmed) {
           elements.push(
             <p key={i} className="mb-2" dangerouslySetInnerHTML={{ 
@@ -493,7 +460,6 @@ export default function MyUnfolding() {
       }
     });
     
-    // Don't forget remaining bullets
     if (currentList.length > 0) {
       elements.push(
         <ul key="list-final" className="list-disc list-inside my-2 space-y-1">
@@ -509,7 +475,7 @@ export default function MyUnfolding() {
     return elements;
   };
 
-  // Chat with your journal
+  // Chat with your journal - FIXED: Uses API route
   const sendChatMessage = async () => {
     if (!chatInput.trim() || entries.length === 0) return;
     
@@ -519,90 +485,32 @@ export default function MyUnfolding() {
     setIsChatLoading(true);
     setChatChart(null);
     
-    // Check if user is asking for a chart/trend/graph
     const wantsChart = /chart|graph|trend|visual|show me|over time|by month|by week|breakdown/i.test(userMessage);
     
     try {
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
+      const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 1500,
-          messages: [{
-            role: "user",
-            content: wantsChart ? `You are a coach helping a woman leader reflect on her journal. She wants to see data from her entries.
-
-IMPORTANT - The CORE framework phases are:
-- C = Confront (seeing what's really there)
-- O = Own (feeling it fully)
-- R = Rewire (choosing a new story)
-- E = Embed (making it stick)
-
-Return ONLY a JSON object (no other text) in this format:
-{
-  "title": "Short title for the chart",
-  "description": "1-2 sentence insight about what this shows",
-  "type": "bar",
-  "data": [
-    { "label": "Label 1", "value": 5 },
-    { "label": "Label 2", "value": 3 }
-  ]
-}
-
-Chart ideas: entries by month, entries by CORE phase (use C/O/R/E or Confront/Own/Rewire/Embed), topics mentioned, keywords counted.
-Keep labels short. Max 8 data points.
-
-Her question: "${userMessage}"
-
-Her entries:
-${entries.slice(0, 30).map(e => `---\n${new Date(e.date).toLocaleDateString()} ${e.phase ? `[${e.phase}]` : ''}:\n"${e.text}"`).join('\n\n')}` 
-            : `You are a warm, direct coach helping a woman leader explore her journal.
-
-The CORE framework phases are:
-- C = Confront (seeing what's really there)
-- O = Own (feeling it fully)
-- R = Rewire (choosing a new story)
-- E = Embed (making it stick)
-
-CRITICAL FORMATTING RULES:
-- Use bullet points for lists
-- Keep paragraphs to 2-3 sentences max
-- Use **bold** for emphasis
-- Never write walls of text
-- Be concise - quality over quantity
-- If she asks to see something differently (bullets, graph, table), just do it immediately
-
-TONE:
-- Warm but direct
-- Quote her words back when relevant
-- If you can't find something, say so briefly
-- Never be defensive or ask clarifying questions - just give your best answer
-
-Her question: "${userMessage}"
-
-Her journal entries:
-${entries.slice(0, 30).map(e => `---\n${new Date(e.date).toLocaleDateString()}:\n"${e.text}"`).join('\n\n')}`
-          }]
+          message: userMessage,
+          entries: entries.slice(0, 30),
+          wantsChart
         })
       });
       
       const data = await response.json();
-      const responseText = data.content?.[0]?.text || "";
       
-      if (wantsChart) {
-        try {
-          const cleanJson = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-          const chartData = JSON.parse(cleanJson);
-          setChatChart(chartData);
-          setChatMessages(prev => [...prev, { role: 'assistant', content: chartData.description }]);
-        } catch (e) {
-          setChatMessages(prev => [...prev, { role: 'assistant', content: responseText }]);
-        }
-      } else {
-        setChatMessages(prev => [...prev, { role: 'assistant', content: responseText }]);
+      if (data.error) {
+        throw new Error(data.error);
       }
+      
+      if (data.chart) {
+        setChatChart(data.chart);
+      }
+      
+      setChatMessages(prev => [...prev, { role: 'assistant', content: data.text }]);
     } catch (error) {
+      console.error('Chat error:', error);
       setChatMessages(prev => [...prev, { role: 'assistant', content: "Something went wrong. Try again." }]);
     }
     setIsChatLoading(false);
@@ -628,6 +536,7 @@ ${entries.slice(0, 30).map(e => `---\n${new Date(e.date).toLocaleDateString()}:\
     return entries.filter(e => new Date(e.date) >= cutoff);
   };
 
+  // Analyze patterns - FIXED: Uses API route
   const analyzePatterns = async () => {
     const filteredEntries = filterEntriesByTime(entries, patternTimeFilter);
     if (filteredEntries.length < 3) {
@@ -635,89 +544,27 @@ ${entries.slice(0, 30).map(e => `---\n${new Date(e.date).toLocaleDateString()}:\
       return;
     }
     setIsAnalyzing(true);
+    
     try {
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
+      const response = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 2000,
-          messages: [{
-            role: "user",
-            content: `You are a wise, direct coach reading a woman leader's journal. Your job is to name what she can't see herself.
-
-WRITING STYLE - THIS IS CRITICAL:
-- Short, punchy sentences. No fluff.
-- Be direct. Be provocative. Be warm but don't soften the truth.
-- Quote her exact words back to her, then challenge them.
-- Use "you" constantly. This is personal.
-- Each insight should land—then offer the deeper question underneath.
-- BE CURIOUS, NOT JUDGMENTAL. You're opening doors, not closing them. Wonder with her, don't scold her.
-- Avoid words like "always", "never", "you should", "you need to". Instead: "I notice...", "What if...", "I wonder..."
-
-BAD example: "You seem to want more balance in your life. There are patterns suggesting you might be overworking."
-GOOD example: "You keep saying you want more time. But you took back three projects this week. What if being busy is the point?"
-
-Return your analysis as JSON in this exact format (no markdown, just raw JSON):
-{
-  "overview": {
-    "wanting": "2-3 sentences about what she keeps saying she wants. Quote her words.",
-    "winning": "2-3 sentences celebrating where she's growing, showing courage, making progress. Name specific wins she might be dismissing.",
-    "blocking": "2-3 sentences about patterns getting in her way. Be specific and honest but kind.",
-    "ready": "2-3 sentences about what she might be ready to step into. The growth edge you sense.",
-    "question": "One powerful question to sit with."
-  },
-  "C": {
-    "headline": "A short provocative headline (e.g., 'You say you want rest. Your calendar says otherwise.')",
-    "insight": "2-3 punchy sentences. Quote her words. Name the contradiction. What's really going on?",
-    "underneath": "1-2 sentences about what might really be driving this pattern."
-  },
-  "O": {
-    "headline": "Short provocative headline about what she's feeling",
-    "insight": "2-3 punchy sentences. What emotions keep showing up? What is her body saying? What is she not letting herself feel?",
-    "underneath": "1-2 sentences about what's underneath the feelings she's naming."
-  },
-  "R": {
-    "headline": "Short provocative headline about where she's shifting",
-    "insight": "2-3 punchy sentences. Where is she already changing? What new beliefs are emerging? Name the growth she might be dismissing.",
-    "underneath": "1-2 sentences about what she might be ready to step into."
-  },
-  "E": {
-    "headline": "Short provocative headline about what sustains her",
-    "insight": "2-3 punchy sentences. What rituals are working? What structures would protect her? What does she keep abandoning?",
-    "underneath": "1-2 sentences about what she needs to protect."
-  }${intentions.length > 0 ? `,
-  "intentions": "2-3 specific sentences about her intentions. Name exactly what you saw (or didn't see) in the entries related to each intention. Celebrate specific wins. Name specific gaps. No vague observations—be concrete."` : ''}
-}
-
-${intentions.length > 0 ? `Her stated intentions:\n${intentions.map(i => `• ${i.text}`).join('\n')}\n` : ''}
-
-Her journal entries (${patternTimeFilter === 'all' ? 'all time' : patternTimeFilter === 'year' ? 'last year' : patternTimeFilter === '6months' ? 'last 6 months' : `last ${patternTimeFilter}`}):
-
-${filteredEntries.slice(0, 30).map(e => `---\n${new Date(e.date).toLocaleDateString()}:\n"${e.text}"`).join('\n\n')}`
-          }]
+          entries: filteredEntries.slice(0, 30),
+          intentions: intentions,
+          timeFilter: patternTimeFilter
         })
       });
-      const data = await response.json();
-      const responseText = data.content?.[0]?.text || "";
       
-      // Parse JSON response
-      let parsedPatterns;
-      try {
-        const cleanJson = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-        parsedPatterns = JSON.parse(cleanJson);
-      } catch (e) {
-        parsedPatterns = null;
+      const data = await response.json();
+      
+      if (data.error) {
+        throw new Error(data.error);
       }
       
-      setPatterns({
-        data: parsedPatterns,
-        text: responseText,
-        generatedAt: new Date().toISOString(),
-        entryCount: filteredEntries.length,
-        timeFilter: patternTimeFilter
-      });
+      setPatterns(data);
     } catch (error) {
+      console.error('Analysis error:', error);
       setPatterns({
         data: null,
         text: "Couldn't analyze right now. Try again.",
@@ -729,21 +576,33 @@ ${filteredEntries.slice(0, 30).map(e => `---\n${new Date(e.date).toLocaleDateStr
     setIsAnalyzing(false);
   };
 
-  const submitFeedback = () => {
-    // TODO: Connect to email service (Formspree, EmailJS, or your backend)
-    // Example with Formspree:
-    // fetch('https://formspree.io/f/YOUR_FORM_ID', {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify({ message: feedbackText })
-    // });
-    console.log('Feedback submitted:', feedbackText);
-    setFeedbackSubmitted(true);
-    setTimeout(() => {
-      setShowFeedback(false);
-      setFeedbackText('');
-      setFeedbackSubmitted(false);
-    }, 2000);
+  // Submit feedback - FIXED: Uses Resend API route
+  const submitFeedback = async () => {
+    if (!feedbackText.trim()) return;
+    
+    try {
+      const response = await fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: feedbackText })
+      });
+      
+      const data = await response.json();
+      
+      if (data.error) {
+        throw new Error(data.error);
+      }
+      
+      setFeedbackSubmitted(true);
+      setTimeout(() => {
+        setShowFeedback(false);
+        setFeedbackText('');
+        setFeedbackSubmitted(false);
+      }, 2000);
+    } catch (error) {
+      console.error('Feedback error:', error);
+      alert('Could not send feedback. Please try again.');
+    }
   };
 
   const printEntries = () => {
@@ -800,7 +659,6 @@ ${filteredEntries.slice(0, 30).map(e => `---\n${new Date(e.date).toLocaleDateStr
   // WELCOME SCREEN
   if (showWelcome || !hasConsented) {
     const welcomeSteps = [
-      // Step 0: Welcome
       {
         content: (
           <div className="text-center">
@@ -814,7 +672,6 @@ ${filteredEntries.slice(0, 30).map(e => `---\n${new Date(e.date).toLocaleDateStr
         ),
         button: "Let's begin"
       },
-      // Step 1: How to write
       {
         content: (
           <div className="text-center">
@@ -835,7 +692,6 @@ ${filteredEntries.slice(0, 30).map(e => `---\n${new Date(e.date).toLocaleDateStr
         ),
         button: "Got it"
       },
-      // Step 2: Your data
       {
         content: (
           <div className="text-center">
@@ -863,7 +719,6 @@ ${filteredEntries.slice(0, 30).map(e => `---\n${new Date(e.date).toLocaleDateStr
         ),
         button: "I understand"
       },
-      // Step 3: Not therapy
       {
         content: (
           <div className="text-center">
@@ -882,7 +737,6 @@ ${filteredEntries.slice(0, 30).map(e => `---\n${new Date(e.date).toLocaleDateStr
         ),
         button: "I understand"
       },
-      // Step 4: Ready
       {
         content: (
           <div className="text-center">
@@ -931,7 +785,6 @@ ${filteredEntries.slice(0, 30).map(e => `---\n${new Date(e.date).toLocaleDateStr
               {currentWelcomeStep.button}
             </button>
             
-            {/* Progress dots */}
             <div className="flex justify-center gap-2 mt-6">
               {welcomeSteps.map((_, i) => (
                 <div 
@@ -952,10 +805,8 @@ ${filteredEntries.slice(0, 30).map(e => `---\n${new Date(e.date).toLocaleDateStr
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: BRAND.cream }}>
-      {/* Confetti */}
       <Confetti active={showConfetti} />
       
-      {/* Celebration popup */}
       {showCelebration && (
         <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/20">
           <div 
@@ -976,7 +827,6 @@ ${filteredEntries.slice(0, 30).map(e => `---\n${new Date(e.date).toLocaleDateStr
         </div>
       )}
       
-      {/* About CORE modal */}
       {showAboutCore && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
           <div className="bg-white rounded-xl p-6 max-w-lg w-full my-8">
@@ -1080,7 +930,6 @@ ${filteredEntries.slice(0, 30).map(e => `---\n${new Date(e.date).toLocaleDateStr
         
         {view === 'write' && (
           <div>
-            {/* Hidden file input for image upload */}
             <input
               ref={fileInputRef}
               type="file"
@@ -1156,17 +1005,22 @@ ${filteredEntries.slice(0, 30).map(e => `---\n${new Date(e.date).toLocaleDateStr
                   >
                     {isTranscribing ? 'Processing...' : 'Upload'}
                   </button>
-                  <button 
-                    onClick={isRecording ? stopRecording : startRecording}
-                    disabled={isTranscribing}
-                    className="text-xs px-3 py-1 rounded hover:opacity-70 disabled:opacity-50"
-                    style={{ 
-                      backgroundColor: isRecording ? '#ef4444' : BRAND.lightGray, 
-                      color: isRecording ? 'white' : BRAND.charcoal 
-                    }}
-                  >
-                    {isRecording ? '⏹ Stop' : '🎤 Voice'}
-                  </button>
+                  {voiceSupported && (
+                    <button 
+                      onClick={isRecording ? stopRecording : startRecording}
+                      disabled={isTranscribing}
+                      className="text-xs px-3 py-1 rounded hover:opacity-70 disabled:opacity-50 flex items-center gap-1"
+                      style={{ 
+                        backgroundColor: isRecording ? '#ef4444' : BRAND.lightGray, 
+                        color: isRecording ? 'white' : BRAND.charcoal 
+                      }}
+                    >
+                      {isRecording && (
+                        <span className="w-2 h-2 bg-white rounded-full animate-pulse" />
+                      )}
+                      {isRecording ? 'Stop' : '🎤 Voice'}
+                    </button>
+                  )}
                   <span className="text-xs" style={{ color: BRAND.warmGray }}>
                     {currentEntry.trim() ? `${currentEntry.split(/\s+/).filter(Boolean).length} words` : ''}
                   </span>
@@ -1229,7 +1083,6 @@ ${filteredEntries.slice(0, 30).map(e => `---\n${new Date(e.date).toLocaleDateStr
               <p className="text-sm" style={{ color: BRAND.warmGray }}>Your patterns through the CORE lens</p>
             </div>
             
-            {/* Simple activity graph */}
             {entries.length > 0 && (
               <div className="mb-6">
                 <button
@@ -1243,7 +1096,6 @@ ${filteredEntries.slice(0, 30).map(e => `---\n${new Date(e.date).toLocaleDateStr
                   <div className="bg-white rounded-xl border p-4" style={{ borderColor: BRAND.lightGray }}>
                     <div className="flex items-end gap-1 h-20 mb-2">
                       {(() => {
-                        // Get entries per week for last 8 weeks
                         const weeks = [];
                         for (let i = 7; i >= 0; i--) {
                           const weekStart = new Date();
@@ -1281,7 +1133,6 @@ ${filteredEntries.slice(0, 30).map(e => `---\n${new Date(e.date).toLocaleDateStr
               </div>
             )}
             
-            {/* Controls row */}
             <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
               <TimeFilter value={patternTimeFilter} onChange={setPatternTimeFilter} />
               <button
@@ -1290,7 +1141,7 @@ ${filteredEntries.slice(0, 30).map(e => `---\n${new Date(e.date).toLocaleDateStr
                 className="px-4 py-2 rounded-lg text-sm disabled:opacity-30"
                 style={{ backgroundColor: BRAND.chartreuse, color: BRAND.charcoal }}
               >
-                {isAnalyzing ? '⏳ Analyzing...' : patterns?.data ? '↻ Refresh patterns' : '✨ Analyze my entries'}
+                {isAnalyzing ? '⏳ Analyzing...' : patterns?.data ? '↻ Analyze my entries' : '✨ Analyze my entries'}
               </button>
             </div>
 
@@ -1306,7 +1157,6 @@ ${filteredEntries.slice(0, 30).map(e => `---\n${new Date(e.date).toLocaleDateStr
                   {patterns.entryCount} entries • {formatDate(patterns.generatedAt)}
                 </p>
                 
-                {/* View toggle: All or CORE */}
                 <div className="flex gap-2 mb-2 justify-center">
                   <button
                     onClick={() => setActivePatternPhase('all')}
@@ -1344,7 +1194,6 @@ ${filteredEntries.slice(0, 30).map(e => `---\n${new Date(e.date).toLocaleDateStr
                   </button>
                 </div>
                 
-                {/* Overview/All View - Original conversational format */}
                 {activePatternPhase === 'all' && patterns.data.overview && (
                   <div className="bg-white rounded-xl border p-6 mb-4" style={{ borderColor: BRAND.lightGray }}>
                     <div className="space-y-5">
@@ -1369,7 +1218,6 @@ ${filteredEntries.slice(0, 30).map(e => `---\n${new Date(e.date).toLocaleDateStr
                       </div>
                     </div>
                     
-                    {/* Question inside the white box */}
                     {patterns.data.overview.question && (
                       <div className="mt-6 pt-5 border-t" style={{ borderColor: BRAND.lightGray }}>
                         <p className="text-xs uppercase tracking-wide mb-2" style={{ color: BRAND.warmGray }}>A question to sit with</p>
@@ -1379,15 +1227,12 @@ ${filteredEntries.slice(0, 30).map(e => `---\n${new Date(e.date).toLocaleDateStr
                   </div>
                 )}
                 
-                {/* Single Phase View */}
                 {activePatternPhase !== 'all' && (
                   <div className="bg-white rounded-xl border p-5 mb-4" style={{ borderColor: BRAND.lightGray }}>
-                    {/* Headline */}
                     <p className="text-lg font-medium mb-4 leading-snug" style={{ color: BRAND.charcoal }}>
                       {patterns.data[activePatternPhase]?.headline}
                     </p>
                     
-                    {/* Main insight */}
                     <div className="mb-4">
                       <span className="text-xs font-medium uppercase tracking-wide px-2 py-1 rounded inline-block mb-2" 
                          style={{ backgroundColor: BRAND.cream, color: BRAND.charcoal }}>
@@ -1398,7 +1243,6 @@ ${filteredEntries.slice(0, 30).map(e => `---\n${new Date(e.date).toLocaleDateStr
                       </p>
                     </div>
                     
-                    {/* What's underneath */}
                     {patterns.data[activePatternPhase]?.underneath && (
                       <div className="p-4 rounded-lg" style={{ backgroundColor: BRAND.cream }}>
                         <p className="text-xs font-medium uppercase tracking-wide mb-2" style={{ color: BRAND.charcoal }}>
@@ -1412,7 +1256,6 @@ ${filteredEntries.slice(0, 30).map(e => `---\n${new Date(e.date).toLocaleDateStr
                   </div>
                 )}
                 
-                {/* Question - CORE view only (overview has it inside) */}
                 {activePatternPhase !== 'all' && patterns.data.overview?.question && (
                   <div className="p-5 rounded-xl text-center mb-4" style={{ backgroundColor: BRAND.charcoal }}>
                     <p className="text-xs uppercase tracking-wide mb-2" style={{ color: '#a8a5a0' }}>
@@ -1424,7 +1267,6 @@ ${filteredEntries.slice(0, 30).map(e => `---\n${new Date(e.date).toLocaleDateStr
                   </div>
                 )}
                 
-                {/* Intentions Progress */}
                 {patterns.data.intentions && intentions.length > 0 && (
                   <div className="p-5 rounded-xl mb-4 border-2" style={{ backgroundColor: 'white', borderColor: BRAND.chartreuse }}>
                     <p className="text-xs font-medium uppercase tracking-wide mb-2" style={{ color: BRAND.charcoal }}>
@@ -1436,7 +1278,6 @@ ${filteredEntries.slice(0, 30).map(e => `---\n${new Date(e.date).toLocaleDateStr
                   </div>
                 )}
                 
-                {/* Disclaimer */}
                 <div className="p-3 rounded-lg" style={{ backgroundColor: BRAND.cream }}>
                   <p className="text-xs" style={{ color: BRAND.warmGray }}>
                     These patterns are AI-generated to help you reflect. Not therapy or medical advice.
@@ -1473,7 +1314,6 @@ ${filteredEntries.slice(0, 30).map(e => `---\n${new Date(e.date).toLocaleDateStr
               </div>
             ) : (
               <>
-                {/* Suggested questions */}
                 {chatMessages.length === 0 && !chatChart && (
                   <div className="mb-6">
                     <p className="text-xs mb-3" style={{ color: BRAND.warmGray }}>Try asking:</p>
@@ -1498,7 +1338,6 @@ ${filteredEntries.slice(0, 30).map(e => `---\n${new Date(e.date).toLocaleDateStr
                   </div>
                 )}
                 
-                {/* Chart display */}
                 {chatChart && (
                   <div className="bg-white rounded-xl border p-5 mb-4" style={{ borderColor: BRAND.lightGray }}>
                     <h3 className="font-medium mb-1" style={{ color: BRAND.charcoal }}>{chatChart.title}</h3>
@@ -1527,7 +1366,6 @@ ${filteredEntries.slice(0, 30).map(e => `---\n${new Date(e.date).toLocaleDateStr
                   </div>
                 )}
                 
-                {/* Chat messages */}
                 <div className="space-y-4 mb-4" style={{ minHeight: chatMessages.length > 0 ? '100px' : '0' }}>
                   {chatMessages.map((msg, i) => (
                     <div key={i} className={`p-4 rounded-xl ${msg.role === 'user' ? 'ml-8' : 'mr-8'}`}
@@ -1551,7 +1389,6 @@ ${filteredEntries.slice(0, 30).map(e => `---\n${new Date(e.date).toLocaleDateStr
                   )}
                 </div>
                 
-                {/* Input */}
                 <div className="flex gap-2">
                   <input
                     type="text"
@@ -1720,7 +1557,6 @@ ${filteredEntries.slice(0, 30).map(e => `---\n${new Date(e.date).toLocaleDateStr
             <button onClick={() => setView('write')} className="text-sm mb-6" style={{ color: BRAND.warmGray }}>← Back</button>
             <h2 className="text-xl font-light italic mb-6" style={{ color: BRAND.charcoal }}>Settings</h2>
             
-            {/* Schedule reflection */}
             <div className="bg-white rounded-xl border p-5 mb-6" style={{ borderColor: BRAND.lightGray }}>
               <h3 className="font-medium mb-3" style={{ color: BRAND.charcoal }}>📅 Schedule Your Reflection</h3>
               <p className="text-sm mb-4" style={{ color: BRAND.warmGray }}>
@@ -1783,4 +1619,3 @@ ${filteredEntries.slice(0, 30).map(e => `---\n${new Date(e.date).toLocaleDateStr
       </footer>
     </div>
   );
-}
