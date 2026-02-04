@@ -10,16 +10,10 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Image required' });
   }
 
-  // Normalize media type - Anthropic only accepts these 4 types
+  // Validate media type
   const supportedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-  let normalizedMediaType = mediaType?.toLowerCase() || 'image/jpeg';
-  
-  // Map common unsupported types to supported ones
-  if (normalizedMediaType === 'image/heic' || normalizedMediaType === 'image/heif') {
-    normalizedMediaType = 'image/jpeg';
-  } else if (!supportedTypes.includes(normalizedMediaType)) {
-    // Default to jpeg for any unknown type
-    normalizedMediaType = 'image/jpeg';
+  if (!supportedTypes.includes(mediaType)) {
+    return res.status(400).json({ error: 'Unsupported image format. Use JPEG, PNG, GIF, or WebP.' });
   }
 
   try {
@@ -40,7 +34,7 @@ export default async function handler(req, res) {
               type: "image",
               source: {
                 type: "base64",
-                media_type: normalizedMediaType,
+                media_type: mediaType,
                 data: image
               }
             },
