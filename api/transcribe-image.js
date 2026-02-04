@@ -1,4 +1,6 @@
 // /api/transcribe-image.js - Transcribe handwritten journal from image
+// Uses pure JS heic-decode for Vercel compatibility
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -10,13 +12,40 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Image required' });
   }
 
-  // Validate media type
-  const supportedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-  if (!supportedTypes.includes(mediaType)) {
-    return res.status(400).json({ error: 'Unsupported image format. Use JPEG, PNG, GIF, or WebP.' });
-  }
-
   try {
+    let processedImage = image;
+    let processedMediaType = mediaType;
+    
+    // Convert HEIC to JPEG server-side using pure JS libraries
+    if (mediaType === 'image/heic' || mediaType === 'image/heif') {
+      try {
+        const heicDecode = (await import('heic-decode')).default;
+        const { encode } = await import('jpeg-js');
+        
+        const inputBuffer = Buffer.from(image, 'base64');
+        
+        // Decode HEIC
+        const { width, height, data } = await heicDecode({ buffer: inputBuffer });
+        
+        // Encode as JPEG
+        const jpegData = encode({ width, height, data }, 90);
+        
+        processedImage = jpegData.data.toString('base64');
+        processedMediaType = 'image/jpeg';
+      } catch (heicError) {
+        console.error('HEIC conversion error:', heicError);
+        return res.status(400).json({ 
+          error: 'Could not process this iPhone photo. Try taking a screenshot of the image instead.' 
+        });
+      }
+    }
+    
+    // Validate media type
+    const supportedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (!supportedTypes.includes(processedMediaType)) {
+      processedMediaType = 'image/jpeg';
+    }
+
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
@@ -34,8 +63,8 @@ export default async function handler(req, res) {
               type: "image",
               source: {
                 type: "base64",
-                media_type: mediaType,
-                data: image
+                media_type: processedMediaType,
+                data: processedImage
               }
             },
             {
