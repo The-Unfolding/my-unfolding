@@ -182,6 +182,10 @@ export default function MyUnfolding() {
   const [guidedMessages, setGuidedMessages] = useState([]);
   const [guidedInput, setGuidedInput] = useState('');
   const [isGuidedLoading, setIsGuidedLoading] = useState(false);
+  const [showReflectionOffer, setShowReflectionOffer] = useState(false);
+  const [savedReflectionText, setSavedReflectionText] = useState('');
+  const [reflectionInsight, setReflectionInsight] = useState('');
+  const [isLoadingInsight, setIsLoadingInsight] = useState(false);
   const fileInputRef = useRef(null);
   const recognitionRef = useRef(null);
   const guidedMessagesEndRef = useRef(null);
@@ -283,22 +287,21 @@ export default function MyUnfolding() {
   const startGuidedReflection = () => {
     setIsGuidedReflection(true);
     
-    // If they have a specific prompt showing, use that
-    let openingMessage = "What's present for you right now? Write whatever comes to mind.";
+    // Brief expectation-setting + context-aware prompt
+    let openingMessage = "This is prompted journaling — I'll help you dig into what's happening and what's underneath. Your words become a journal entry.\n\nWhat's present for you right now?";
     
     if (currentPrompt) {
-      // They have a specific prompt - reference it
-      openingMessage = `Let's explore: "${currentPrompt}" Write whatever comes up.`;
+      openingMessage = `This is prompted journaling — I'll help you dig deeper. Your words become a journal entry.\n\nLet's explore: "${currentPrompt}"`;
     } else if (reflectOnIntentions) {
-      openingMessage = "Let's reflect on your intentions. Pick one that's been on your mind and tell me how it's going.";
+      openingMessage = "This is prompted journaling — I'll help you dig deeper. Your words become a journal entry.\n\nLet's reflect on your intentions. Pick one that's been on your mind and tell me how it's going.";
     } else if (selectedPhase === 'C') {
-      openingMessage = "You're in Confront mode — what's something you've been avoiding looking at? Write whatever surfaces.";
+      openingMessage = "This is prompted journaling — I'll help you dig deeper. Your words become a journal entry.\n\nYou're in Confront mode — what's something you've been avoiding looking at?";
     } else if (selectedPhase === 'O') {
-      openingMessage = "You're in Own mode — where do you feel things in your body right now? Describe what's there.";
+      openingMessage = "This is prompted journaling — I'll help you dig deeper. Your words become a journal entry.\n\nYou're in Own mode — where do you feel things in your body right now?";
     } else if (selectedPhase === 'R') {
-      openingMessage = "You're in Rewire mode — what's a belief or pattern you're ready to let go of? Write about it.";
+      openingMessage = "This is prompted journaling — I'll help you dig deeper. Your words become a journal entry.\n\nYou're in Rewire mode — what's a belief or pattern you're ready to let go of?";
     } else if (selectedPhase === 'E') {
-      openingMessage = "You're in Embed mode — what's working that you want to protect? Describe what's helping you right now.";
+      openingMessage = "This is prompted journaling — I'll help you dig deeper. Your words become a journal entry.\n\nYou're in Embed mode — what's working that you want to protect?";
     }
     
     setGuidedMessages([
@@ -348,9 +351,11 @@ export default function MyUnfolding() {
     
     if (userMessages.length === 0) return;
     
+    const entryText = userMessages.join('\n\n');
+    
     const newEntry = {
       id: Date.now(),
-      text: userMessages.join('\n\n'),
+      text: entryText,
       date: new Date().toISOString(),
       type: 'chat',
       phase: selectedPhase,
@@ -360,10 +365,45 @@ export default function MyUnfolding() {
     const newEntries = [newEntry, ...entries];
     setEntries(newEntries);
     
-    // Reset guided reflection state
+    // Store the text and show reflection offer
+    setSavedReflectionText(entryText);
+    setShowReflectionOffer(true);
+    setReflectionInsight('');
+    
+    // Reset guided reflection state but keep phase for context
     setIsGuidedReflection(false);
     setGuidedMessages([]);
     setGuidedInput('');
+  };
+
+  const getReflectionInsight = async () => {
+    setIsLoadingInsight(true);
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          context: 'post_reflection',
+          entryText: savedReflectionText,
+          phase: selectedPhase
+        })
+      });
+      
+      const data = await response.json();
+      if (data.insight) {
+        setReflectionInsight(data.insight);
+      }
+    } catch (error) {
+      console.error('Insight error:', error);
+      setReflectionInsight("I couldn't generate an insight right now. Your entry has been saved.");
+    }
+    setIsLoadingInsight(false);
+  };
+
+  const dismissReflectionOffer = () => {
+    setShowReflectionOffer(false);
+    setSavedReflectionText('');
+    setReflectionInsight('');
     setSelectedPhase(null);
     setCurrentPrompt(null);
     setReflectOnIntentions(false);
@@ -990,6 +1030,50 @@ export default function MyUnfolding() {
         <div className="fixed top-4 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-full shadow-lg z-50 text-sm"
           style={{ backgroundColor: BRAND.charcoal, color: 'white' }}>
           {affirmation}
+        </div>
+      )}
+
+      {showReflectionOffer && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-6 max-w-md w-full">
+            {!reflectionInsight && !isLoadingInsight ? (
+              <>
+                <div className="text-center mb-4">
+                  <span className="text-2xl">✓</span>
+                </div>
+                <h3 className="text-lg font-medium mb-2 text-center" style={{ color: BRAND.charcoal }}>Entry saved</h3>
+                <p className="text-sm mb-6 text-center" style={{ color: BRAND.warmGray }}>
+                  Want me to reflect back what I noticed?
+                </p>
+                <div className="flex gap-3">
+                  <button onClick={dismissReflectionOffer} className="flex-1 py-3 rounded-lg text-sm"
+                    style={{ backgroundColor: BRAND.cream, color: BRAND.charcoal }}>
+                    No thanks
+                  </button>
+                  <button onClick={getReflectionInsight}
+                    className="flex-1 py-3 rounded-lg text-sm"
+                    style={{ backgroundColor: BRAND.chartreuse, color: BRAND.charcoal }}>
+                    Yes, show me
+                  </button>
+                </div>
+              </>
+            ) : isLoadingInsight ? (
+              <div className="text-center py-8">
+                <p className="text-sm animate-pulse" style={{ color: BRAND.warmGray }}>Reading your reflection...</p>
+              </div>
+            ) : (
+              <>
+                <h3 className="text-sm font-medium mb-3" style={{ color: BRAND.warmGray }}>What I noticed:</h3>
+                <p className="text-base leading-relaxed mb-6" style={{ color: BRAND.charcoal }}>
+                  {reflectionInsight}
+                </p>
+                <button onClick={dismissReflectionOffer} className="w-full py-3 rounded-lg text-sm"
+                  style={{ backgroundColor: BRAND.charcoal, color: 'white' }}>
+                  Done
+                </button>
+              </>
+            )}
+          </div>
         </div>
       )}
 
