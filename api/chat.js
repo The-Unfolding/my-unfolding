@@ -4,8 +4,64 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { message, entries, wantsChart } = req.body;
+  const { message, messages, entries, wantsChart, context } = req.body;
 
+  // For guided reflection, we use messages array (multi-turn conversation)
+  if (context === 'guided_reflection') {
+    if (!messages || messages.length === 0) {
+      return res.status(400).json({ error: 'Messages required' });
+    }
+
+    try {
+      const systemPrompt = `You are a thoughtful reflection guide helping someone explore their thoughts through conversation.
+
+YOUR ROLE:
+- Ask open, curious questions that help them go deeper
+- Reflect back what you hear to help them see their own patterns
+- Keep responses brief (2-3 sentences max)
+- Don't give advice or solutions - help them find their own insights
+- Be warm but not effusive
+
+CONVERSATION STYLE:
+- One question at a time
+- Use their words back to them
+- Notice emotions, contradictions, recurring themes
+- Gently probe beneath the surface
+
+Remember: You're a mirror, not a mentor. Help them hear themselves more clearly.`;
+
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": process.env.ANTHROPIC_API_KEY,
+          "anthropic-version": "2023-06-01"
+        },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 300,
+          system: systemPrompt,
+          messages: messages
+        })
+      });
+
+      const data = await response.json();
+      
+      if (data.error) {
+        console.error('Anthropic API error:', data.error);
+        return res.status(500).json({ error: 'Chat failed' });
+      }
+
+      const responseText = data.content?.[0]?.text || "";
+      return res.status(200).json({ response: responseText });
+
+    } catch (error) {
+      console.error('Guided reflection error:', error);
+      return res.status(500).json({ error: 'Chat failed' });
+    }
+  }
+
+  // Original chat functionality (for Chat tab)
   if (!message || !entries || entries.length === 0) {
     return res.status(400).json({ error: 'Message and entries required' });
   }
