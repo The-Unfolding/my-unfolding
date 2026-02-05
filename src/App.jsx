@@ -178,8 +178,13 @@ export default function MyUnfolding() {
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [chatChart, setChatChart] = useState(null);
   const [voiceSupported, setVoiceSupported] = useState(false);
+  const [isGuidedReflection, setIsGuidedReflection] = useState(false);
+  const [guidedMessages, setGuidedMessages] = useState([]);
+  const [guidedInput, setGuidedInput] = useState('');
+  const [isGuidedLoading, setIsGuidedLoading] = useState(false);
   const fileInputRef = useRef(null);
   const recognitionRef = useRef(null);
+  const guidedMessagesEndRef = useRef(null);
 
   // Check for Web Speech API support
   useEffect(() => {
@@ -272,6 +277,88 @@ export default function MyUnfolding() {
       setShowAffirmation(true);
       setTimeout(() => setShowAffirmation(false), 2500);
     }
+  };
+
+  // Guided Reflection (chat) functions
+  const startGuidedReflection = () => {
+    setIsGuidedReflection(true);
+    setGuidedMessages([
+      { role: 'assistant', content: "What's on your mind today? I'm here to help you reflect." }
+    ]);
+    setGuidedInput('');
+  };
+
+  const sendGuidedMessage = async () => {
+    if (!guidedInput.trim() || isGuidedLoading) return;
+    
+    const userMessage = { role: 'user', content: guidedInput.trim() };
+    const newMessages = [...guidedMessages, userMessage];
+    setGuidedMessages(newMessages);
+    setGuidedInput('');
+    setIsGuidedLoading(true);
+    
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: newMessages.map(m => ({ role: m.role, content: m.content })),
+          context: 'guided_reflection'
+        })
+      });
+      
+      const data = await response.json();
+      if (data.response) {
+        setGuidedMessages([...newMessages, { role: 'assistant', content: data.response }]);
+      }
+    } catch (error) {
+      console.error('Guided reflection error:', error);
+    }
+    
+    setIsGuidedLoading(false);
+    setTimeout(() => guidedMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+  };
+
+  const saveGuidedReflection = () => {
+    const userMessages = guidedMessages
+      .filter(m => m.role === 'user')
+      .map(m => m.content);
+    
+    if (userMessages.length === 0) return;
+    
+    const newEntry = {
+      id: Date.now(),
+      text: userMessages.join('\n\n'),
+      date: new Date().toISOString(),
+      type: 'chat',
+      phase: selectedPhase,
+      isIntentionReflection: reflectOnIntentions
+    };
+    
+    const newEntries = [newEntry, ...entries];
+    setEntries(newEntries);
+    
+    // Reset guided reflection state
+    setIsGuidedReflection(false);
+    setGuidedMessages([]);
+    setGuidedInput('');
+    setSelectedPhase(null);
+    setCurrentPrompt(null);
+    setReflectOnIntentions(false);
+    
+    // Show affirmation
+    setAffirmation(AFFIRMATIONS[Math.floor(Math.random() * AFFIRMATIONS.length)]);
+    setShowAffirmation(true);
+    setTimeout(() => setShowAffirmation(false), 2500);
+  };
+
+  const cancelGuidedReflection = () => {
+    if (guidedMessages.filter(m => m.role === 'user').length > 0) {
+      if (!confirm('Discard this reflection?')) return;
+    }
+    setIsGuidedReflection(false);
+    setGuidedMessages([]);
+    setGuidedInput('');
   };
 
   const deleteEntry = (id) => {
@@ -999,47 +1086,125 @@ export default function MyUnfolding() {
             </div>
 
             <div className="bg-white rounded-xl border overflow-hidden" style={{ borderColor: BRAND.lightGray }}>
-              <textarea value={currentEntry} onChange={(e) => setCurrentEntry(e.target.value)}
-                placeholder="What's true right now?"
-                className="w-full h-72 p-6 resize-none focus:outline-none text-lg leading-relaxed"
-                style={{ color: BRAND.charcoal }} />
-              <div className="flex items-center justify-between px-6 py-4 border-t"
-                style={{ backgroundColor: BRAND.cream, borderColor: BRAND.lightGray }}>
-                <div className="flex items-center gap-2">
-                  <button 
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isTranscribing || isRecording}
-                    className="text-xs px-3 py-1 rounded hover:opacity-70 disabled:opacity-50"
-                    style={{ backgroundColor: BRAND.lightGray, color: BRAND.charcoal }}
-                  >
-                    {isTranscribing ? 'Processing...' : 'Upload'}
-                  </button>
-                  {voiceSupported && (
-                    <button 
-                      onClick={isRecording ? stopRecording : startRecording}
-                      disabled={isTranscribing}
-                      className="text-xs px-3 py-1 rounded hover:opacity-70 disabled:opacity-50 flex items-center gap-1"
-                      style={{ 
-                        backgroundColor: isRecording ? '#ef4444' : BRAND.lightGray, 
-                        color: isRecording ? 'white' : BRAND.charcoal 
-                      }}
-                    >
-                      {isRecording && (
-                        <span className="w-2 h-2 bg-white rounded-full animate-pulse" />
+              {!isGuidedReflection ? (
+                <>
+                  <textarea value={currentEntry} onChange={(e) => setCurrentEntry(e.target.value)}
+                    placeholder="What's true right now?"
+                    className="w-full h-72 p-6 resize-none focus:outline-none text-lg leading-relaxed"
+                    style={{ color: BRAND.charcoal }} />
+                  <div className="flex items-center justify-between px-6 py-4 border-t"
+                    style={{ backgroundColor: BRAND.cream, borderColor: BRAND.lightGray }}>
+                    <div className="flex items-center gap-2">
+                      <button 
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isTranscribing || isRecording}
+                        className="text-xs px-3 py-1 rounded hover:opacity-70 disabled:opacity-50"
+                        style={{ backgroundColor: BRAND.lightGray, color: BRAND.charcoal }}
+                      >
+                        {isTranscribing ? 'Processing...' : 'Upload'}
+                      </button>
+                      {voiceSupported && (
+                        <button 
+                          onClick={isRecording ? stopRecording : startRecording}
+                          disabled={isTranscribing}
+                          className="text-xs px-3 py-1 rounded hover:opacity-70 disabled:opacity-50 flex items-center gap-1"
+                          style={{ 
+                            backgroundColor: isRecording ? '#ef4444' : BRAND.lightGray, 
+                            color: isRecording ? 'white' : BRAND.charcoal 
+                          }}
+                        >
+                          {isRecording && (
+                            <span className="w-2 h-2 bg-white rounded-full animate-pulse" />
+                          )}
+                          {isRecording ? 'Stop' : '🎤 Voice'}
+                        </button>
                       )}
-                      {isRecording ? 'Stop' : '🎤 Voice'}
+                      <button 
+                        onClick={startGuidedReflection}
+                        disabled={isTranscribing || isRecording}
+                        className="text-xs px-3 py-1 rounded hover:opacity-70 disabled:opacity-50"
+                        style={{ backgroundColor: BRAND.cream, color: BRAND.charcoal, border: `1px solid ${BRAND.lightGray}` }}
+                      >
+                        💬 Guided reflection
+                      </button>
+                      <span className="text-xs" style={{ color: BRAND.warmGray }}>
+                        {currentEntry.trim() ? `${currentEntry.split(/\s+/).filter(Boolean).length} words` : ''}
+                      </span>
+                    </div>
+                    <button onClick={saveEntry} disabled={!currentEntry.trim()}
+                      className="px-5 py-2 rounded-lg text-sm disabled:opacity-30"
+                      style={{ backgroundColor: currentEntry.trim() ? BRAND.charcoal : BRAND.lightGray, color: 'white' }}>
+                      Save entry
                     </button>
-                  )}
-                  <span className="text-xs" style={{ color: BRAND.warmGray }}>
-                    {currentEntry.trim() ? `${currentEntry.split(/\s+/).filter(Boolean).length} words` : ''}
-                  </span>
+                  </div>
+                </>
+              ) : (
+                <div className="flex flex-col" style={{ minHeight: '400px' }}>
+                  <div className="flex-1 overflow-y-auto p-6 space-y-4" style={{ maxHeight: '350px' }}>
+                    {guidedMessages.map((msg, i) => (
+                      <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                        <div 
+                          className="max-w-[85%] px-4 py-3 rounded-2xl text-sm leading-relaxed"
+                          style={{ 
+                            backgroundColor: msg.role === 'user' ? BRAND.chartreuse : BRAND.cream,
+                            color: BRAND.charcoal,
+                            borderBottomRightRadius: msg.role === 'user' ? '4px' : '16px',
+                            borderBottomLeftRadius: msg.role === 'assistant' ? '4px' : '16px'
+                          }}
+                        >
+                          {msg.content}
+                        </div>
+                      </div>
+                    ))}
+                    {isGuidedLoading && (
+                      <div className="flex justify-start">
+                        <div className="px-4 py-3 rounded-2xl text-sm" style={{ backgroundColor: BRAND.cream }}>
+                          <span className="animate-pulse">...</span>
+                        </div>
+                      </div>
+                    )}
+                    <div ref={guidedMessagesEndRef} />
+                  </div>
+                  <div className="border-t p-4" style={{ borderColor: BRAND.lightGray }}>
+                    <div className="flex gap-2 mb-3">
+                      <input
+                        type="text"
+                        value={guidedInput}
+                        onChange={(e) => setGuidedInput(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendGuidedMessage()}
+                        placeholder="Keep reflecting..."
+                        className="flex-1 px-4 py-3 rounded-full border focus:outline-none text-sm"
+                        style={{ borderColor: BRAND.lightGray }}
+                      />
+                      <button
+                        onClick={sendGuidedMessage}
+                        disabled={!guidedInput.trim() || isGuidedLoading}
+                        className="w-11 h-11 rounded-full flex items-center justify-center disabled:opacity-30"
+                        style={{ backgroundColor: BRAND.chartreuse }}
+                      >
+                        ↑
+                      </button>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={cancelGuidedReflection}
+                        className="px-4 py-2 rounded-lg text-xs"
+                        style={{ backgroundColor: 'white', border: `1px solid ${BRAND.lightGray}`, color: BRAND.warmGray }}
+                      >
+                        ← Back to write
+                      </button>
+                      <button
+                        onClick={saveGuidedReflection}
+                        disabled={guidedMessages.filter(m => m.role === 'user').length === 0}
+                        className="px-4 py-2 rounded-lg text-xs disabled:opacity-30"
+                        style={{ backgroundColor: BRAND.chartreuse, color: BRAND.charcoal }}
+                      >
+                        💾 Save to journal
+                      </button>
+                    </div>
+                  </div>
                 </div>
-                <button onClick={saveEntry} disabled={!currentEntry.trim()}
-                  className="px-5 py-2 rounded-lg text-sm disabled:opacity-30"
-                  style={{ backgroundColor: currentEntry.trim() ? BRAND.charcoal : BRAND.lightGray, color: 'white' }}>
-                  Save entry
-                </button>
-              </div>
+              )}
             </div>
           </div>
         )}
@@ -1065,12 +1230,26 @@ export default function MyUnfolding() {
                       <div className="flex items-start justify-between mb-2 flex-wrap gap-2">
                         <span className="text-sm font-medium" style={{ color: BRAND.charcoal }}>{formatFullDate(entry.date)}</span>
                         <div className="flex gap-1 flex-wrap">
+                          {entry.type === 'chat' && <span className="text-xs px-2 py-1 rounded" style={{ backgroundColor: BRAND.cream }}>💬 Chat</span>}
                           {entry.phase && <span className="text-xs px-2 py-1 rounded" style={{ backgroundColor: BRAND.cream }}>{entry.phase}</span>}
                           {entry.isIntentionReflection && <span className="text-xs px-2 py-1 rounded" style={{ backgroundColor: BRAND.cream }}>Intentions</span>}
                         </div>
                       </div>
                       {entry.prompt && <p className="text-sm italic mb-2" style={{ color: BRAND.warmGray }}>"{entry.prompt}"</p>}
-                      <p className={`leading-relaxed ${expandedEntry === entry.id ? '' : 'line-clamp-3'}`} style={{ color: BRAND.charcoal }}>{entry.text}</p>
+                      {entry.type === 'chat' ? (
+                        <div 
+                          className={`rounded-lg p-3 overflow-y-auto ${expandedEntry === entry.id ? '' : 'max-h-24'}`}
+                          style={{ backgroundColor: '#fafaf8', border: `1px solid ${BRAND.lightGray}` }}
+                        >
+                          {entry.text.split('\n\n').map((paragraph, i) => (
+                            <p key={i} className="text-sm leading-relaxed mb-2 last:mb-0" style={{ color: BRAND.charcoal }}>
+                              {paragraph}
+                            </p>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className={`leading-relaxed ${expandedEntry === entry.id ? '' : 'line-clamp-3'}`} style={{ color: BRAND.charcoal }}>{entry.text}</p>
+                      )}
                     </div>
                     {expandedEntry === entry.id && (
                       <div className="px-5 pb-4 flex justify-end">
