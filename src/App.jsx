@@ -1144,14 +1144,86 @@ export default function MyUnfolding() {
             
             <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
               <TimeFilter value={patternTimeFilter} onChange={setPatternTimeFilter} />
-              <button
-                onClick={analyzePatterns}
-                disabled={isAnalyzing || filterEntriesByTime(entries, patternTimeFilter).length < 3}
-                className="px-4 py-2 rounded-lg text-sm disabled:opacity-30"
-                style={{ backgroundColor: BRAND.chartreuse, color: BRAND.charcoal }}
-              >
-                {isAnalyzing ? '⏳ Analyzing...' : patterns?.data ? '↻ Analyze my entries' : '✨ Analyze my entries'}
-              </button>
+              <div className="flex gap-2">
+                {patterns?.data && patterns.timeFilter === patternTimeFilter && (
+                  <button
+                    onClick={() => {
+                      const printWindow = window.open('', '_blank');
+                      const content = `
+                        <!DOCTYPE html>
+                        <html>
+                        <head>
+                          <title>My Patterns - ${new Date().toLocaleDateString()}</title>
+                          <style>
+                            body { font-family: Georgia, serif; max-width: 700px; margin: 40px auto; padding: 20px; color: #2a2a28; line-height: 1.6; }
+                            h1 { font-size: 24px; margin-bottom: 5px; }
+                            h2 { font-size: 18px; margin-top: 30px; margin-bottom: 10px; border-bottom: 1px solid #d4d0c8; padding-bottom: 5px; }
+                            h3 { font-size: 14px; font-weight: 600; margin-bottom: 5px; margin-top: 15px; }
+                            p { margin: 0 0 10px 0; font-size: 14px; }
+                            .meta { color: #6b6863; font-size: 12px; margin-bottom: 30px; }
+                            .question { font-style: italic; font-size: 16px; margin-top: 20px; padding: 15px; background: #f5f2eb; border-radius: 8px; }
+                            .section { margin-bottom: 25px; }
+                            .phase { background: #f5f2eb; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+                            .phase-title { font-size: 16px; font-weight: 500; margin-bottom: 15px; }
+                            .underneath { font-style: italic; color: #6b6863; margin-top: 10px; padding-top: 10px; border-top: 1px solid #d4d0c8; }
+                          </style>
+                        </head>
+                        <body>
+                          <h1>My Unfolding - Pattern Analysis</h1>
+                          <p class="meta">${patterns.entryCount} entries analyzed • Generated ${new Date(patterns.generatedAt).toLocaleDateString()}</p>
+                          
+                          <h2>Overview</h2>
+                          <div class="section">
+                            <h3>What you keep saying you want</h3>
+                            <p>${patterns.data.overview?.wanting || ''}</p>
+                            
+                            <h3>Where you're winning</h3>
+                            <p>${patterns.data.overview?.winning || ''}</p>
+                            
+                            <h3>What's getting in the way</h3>
+                            <p>${patterns.data.overview?.blocking || ''}</p>
+                            
+                            <h3>What you might be ready for</h3>
+                            <p>${patterns.data.overview?.ready || ''}</p>
+                            
+                            ${patterns.data.overview?.question ? `<div class="question">${patterns.data.overview.question}</div>` : ''}
+                          </div>
+                          
+                          ${['C', 'O', 'R', 'E'].map(phase => patterns.data[phase] ? `
+                            <div class="phase">
+                              <div class="phase-title">${phase} - ${phase === 'C' ? 'Confront' : phase === 'O' ? 'Own' : phase === 'R' ? 'Rewire' : 'Embed'}</div>
+                              <p><strong>${patterns.data[phase].headline || ''}</strong></p>
+                              <p>${patterns.data[phase].insight || ''}</p>
+                              ${patterns.data[phase].underneath ? `<p class="underneath">${patterns.data[phase].underneath}</p>` : ''}
+                            </div>
+                          ` : '').join('')}
+                          
+                          ${patterns.data.intentions ? `
+                            <h2>Intentions</h2>
+                            <p>${patterns.data.intentions}</p>
+                          ` : ''}
+                        </body>
+                        </html>
+                      `;
+                      printWindow.document.write(content);
+                      printWindow.document.close();
+                      printWindow.print();
+                    }}
+                    className="px-4 py-2 rounded-lg text-sm border"
+                    style={{ borderColor: BRAND.lightGray, color: BRAND.charcoal }}
+                  >
+                    🖨️ Print
+                  </button>
+                )}
+                <button
+                  onClick={analyzePatterns}
+                  disabled={isAnalyzing || filterEntriesByTime(entries, patternTimeFilter).length < 3}
+                  className="px-4 py-2 rounded-lg text-sm disabled:opacity-30"
+                  style={{ backgroundColor: BRAND.chartreuse, color: BRAND.charcoal }}
+                >
+                  {isAnalyzing ? '⏳ Analyzing...' : patterns?.data ? '↻ Analyze my entries' : '✨ Analyze my entries'}
+                </button>
+              </div>
             </div>
 
             {isAnalyzing ? (
