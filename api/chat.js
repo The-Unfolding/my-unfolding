@@ -4,7 +4,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { message, messages, entries, wantsChart, context, phase, isIntentions } = req.body;
+  const { message, messages, entries, wantsChart, context, phase, isIntentions, prompt } = req.body;
 
   // For guided reflection, we use messages array (multi-turn conversation)
   if (context === 'guided_reflection') {
@@ -15,7 +15,11 @@ export default async function handler(req, res) {
     try {
       // Build context-aware system prompt
       let phaseContext = '';
-      if (isIntentions) {
+      
+      if (prompt) {
+        // They have a specific journaling prompt - keep responses aligned with it
+        phaseContext = `\n\nCONTEXT: They're reflecting on this prompt: "${prompt}". Keep your responses aligned with this theme.`;
+      } else if (isIntentions) {
         phaseContext = `\n\nCONTEXT: They're reflecting on their intentions — the commitments they've set for themselves. Help them explore how those intentions are landing in real life.`;
       } else if (phase === 'C') {
         phaseContext = `\n\nCONTEXT: They're in CONFRONT mode — seeing what's really there. This is about noticing patterns, facing hard truths, and naming what they've been avoiding.`;
