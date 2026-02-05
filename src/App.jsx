@@ -282,8 +282,24 @@ export default function MyUnfolding() {
   // Guided Reflection (chat) functions
   const startGuidedReflection = () => {
     setIsGuidedReflection(true);
+    
+    // Context-aware opening message
+    let openingMessage = "What's present for you right now? Write whatever comes to mind.";
+    
+    if (reflectOnIntentions) {
+      openingMessage = "Let's reflect on your intentions. Pick one that's been on your mind and tell me how it's going.";
+    } else if (selectedPhase === 'C') {
+      openingMessage = "You're in Confront mode — what's something you've been avoiding looking at? Write whatever surfaces.";
+    } else if (selectedPhase === 'O') {
+      openingMessage = "You're in Own mode — where do you feel things in your body right now? Describe what's there.";
+    } else if (selectedPhase === 'R') {
+      openingMessage = "You're in Rewire mode — what's a belief or pattern you're ready to let go of? Write about it.";
+    } else if (selectedPhase === 'E') {
+      openingMessage = "You're in Embed mode — what's working that you want to protect? Describe what's helping you right now.";
+    }
+    
     setGuidedMessages([
-      { role: 'assistant', content: "What's on your mind today? I'm here to help you reflect." }
+      { role: 'assistant', content: openingMessage }
     ]);
     setGuidedInput('');
   };
@@ -303,7 +319,9 @@ export default function MyUnfolding() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: newMessages.map(m => ({ role: m.role, content: m.content })),
-          context: 'guided_reflection'
+          context: 'guided_reflection',
+          phase: selectedPhase,
+          isIntentions: reflectOnIntentions
         })
       });
       
