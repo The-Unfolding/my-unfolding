@@ -283,10 +283,13 @@ export default function MyUnfolding() {
   const startGuidedReflection = () => {
     setIsGuidedReflection(true);
     
-    // Context-aware opening message
+    // If they have a specific prompt showing, use that
     let openingMessage = "What's present for you right now? Write whatever comes to mind.";
     
-    if (reflectOnIntentions) {
+    if (currentPrompt) {
+      // They have a specific prompt - reference it
+      openingMessage = `Let's explore: "${currentPrompt}" Write whatever comes up.`;
+    } else if (reflectOnIntentions) {
       openingMessage = "Let's reflect on your intentions. Pick one that's been on your mind and tell me how it's going.";
     } else if (selectedPhase === 'C') {
       openingMessage = "You're in Confront mode — what's something you've been avoiding looking at? Write whatever surfaces.";
@@ -321,7 +324,8 @@ export default function MyUnfolding() {
           messages: newMessages.map(m => ({ role: m.role, content: m.content })),
           context: 'guided_reflection',
           phase: selectedPhase,
-          isIntentions: reflectOnIntentions
+          isIntentions: reflectOnIntentions,
+          prompt: currentPrompt
         })
       });
       
