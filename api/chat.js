@@ -4,7 +4,70 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { message, messages, entries, wantsChart, context, phase, isIntentions, prompt } = req.body;
+  const { message, messages, entries, wantsChart, context, phase, isIntentions, prompt, entryText } = req.body;
+
+  // Post-reflection insight - brief summary of what they just wrote
+  if (context === 'post_reflection') {
+    if (!entryText) {
+      return res.status(400).json({ error: 'Entry text required' });
+    }
+
+    try {
+      let phaseHint = '';
+      if (phase === 'C') phaseHint = ' They were in Confront mode (seeing what\'s really there).';
+      else if (phase === 'O') phaseHint = ' They were in Own mode (feeling it fully).';
+      else if (phase === 'R') phaseHint = ' They were in Rewire mode (choosing a new story).';
+      else if (phase === 'E') phaseHint = ' They were in Embed mode (making it stick).';
+
+      const systemPrompt = `You just helped someone journal through prompted conversation. Now give them a brief reflection on what they wrote.
+
+YOUR TASK:
+- 2-3 sentences max
+- Name what you noticed: themes, emotions, patterns, contradictions
+- Use their words when possible
+- Be warm and observant, not analytical or clinical
+- Don't give advice
+
+GOOD EXAMPLES:
+- "You kept coming back to the word 'should' — there's a lot of pressure in your language. And underneath the frustration, it sounds like there's some grief about how things have changed."
+- "I noticed you started by dismissing this as 'just hormones' but then uncovered real things: feeling unseen, wanting more space. Those aren't small."
+- "There's a tension here between wanting to be liked and wanting to be honest. You named it clearly — that's the first step."
+
+What they wrote:
+"${entryText}"${phaseHint}`;
+
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": process.env.ANTHROPIC_API_KEY,
+          "anthropic-version": "2023-06-01"
+        },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 200,
+          messages: [{
+            role: "user",
+            content: systemPrompt
+          }]
+        })
+      });
+
+      const data = await response.json();
+      
+      if (data.error) {
+        console.error('Anthropic API error:', data.error);
+        return res.status(500).json({ error: 'Insight failed' });
+      }
+
+      const insightText = data.content?.[0]?.text || "";
+      return res.status(200).json({ insight: insightText });
+
+    } catch (error) {
+      console.error('Post-reflection error:', error);
+      return res.status(500).json({ error: 'Insight failed' });
+    }
+  }
 
   // For guided reflection, we use messages array (multi-turn conversation)
   if (context === 'guided_reflection') {
