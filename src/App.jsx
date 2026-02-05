@@ -182,6 +182,7 @@ export default function MyUnfolding() {
   const [guidedMessages, setGuidedMessages] = useState([]);
   const [guidedInput, setGuidedInput] = useState('');
   const [isGuidedLoading, setIsGuidedLoading] = useState(false);
+  const [isWrappingUp, setIsWrappingUp] = useState(false);
   const [showReflectionOffer, setShowReflectionOffer] = useState(false);
   const [savedReflectionText, setSavedReflectionText] = useState('');
   const [reflectionInsight, setReflectionInsight] = useState('');
@@ -286,6 +287,7 @@ export default function MyUnfolding() {
   // Guided Reflection (chat) functions
   const startGuidedReflection = () => {
     setIsGuidedReflection(true);
+    setIsWrappingUp(false);
     
     // Brief expectation-setting + context-aware prompt
     let openingMessage = "This is prompted journaling — I'll help you dig into what's happening and what's underneath. Your words become a journal entry.\n\nWhat's present for you right now?";
@@ -372,6 +374,7 @@ export default function MyUnfolding() {
     
     // Reset guided reflection state but keep phase for context
     setIsGuidedReflection(false);
+    setIsWrappingUp(false);
     setGuidedMessages([]);
     setGuidedInput('');
   };
@@ -414,11 +417,21 @@ export default function MyUnfolding() {
     setTimeout(() => setShowAffirmation(false), 2500);
   };
 
+  const wrapUpReflection = () => {
+    setIsWrappingUp(true);
+    const closingMessage = { 
+      role: 'assistant', 
+      content: "Thanks for sitting with this. Take a moment to read back what you wrote — sometimes that's where the insight lands." 
+    };
+    setGuidedMessages([...guidedMessages, closingMessage]);
+  };
+
   const cancelGuidedReflection = () => {
     if (guidedMessages.filter(m => m.role === 'user').length > 0) {
       if (!confirm('Discard this reflection?')) return;
     }
     setIsGuidedReflection(false);
+    setIsWrappingUp(false);
     setGuidedMessages([]);
     setGuidedInput('');
   };
@@ -1272,42 +1285,63 @@ export default function MyUnfolding() {
                     <div ref={guidedMessagesEndRef} />
                   </div>
                   <div className="border-t p-4" style={{ borderColor: BRAND.lightGray }}>
-                    <div className="flex gap-2 mb-3">
-                      <input
-                        type="text"
-                        value={guidedInput}
-                        onChange={(e) => setGuidedInput(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendGuidedMessage()}
-                        placeholder="Keep reflecting..."
-                        className="flex-1 px-4 py-3 rounded-full border focus:outline-none text-sm"
-                        style={{ borderColor: BRAND.lightGray }}
-                      />
-                      <button
-                        onClick={sendGuidedMessage}
-                        disabled={!guidedInput.trim() || isGuidedLoading}
-                        className="w-11 h-11 rounded-full flex items-center justify-center disabled:opacity-30"
-                        style={{ backgroundColor: BRAND.chartreuse }}
-                      >
-                        ↑
-                      </button>
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={cancelGuidedReflection}
-                        className="px-4 py-2 rounded-lg text-xs"
-                        style={{ backgroundColor: 'white', border: `1px solid ${BRAND.lightGray}`, color: BRAND.warmGray }}
-                      >
-                        ← Back to write
-                      </button>
+                    {!isWrappingUp ? (
+                      <>
+                        <div className="flex gap-2 mb-3">
+                          <input
+                            type="text"
+                            value={guidedInput}
+                            onChange={(e) => setGuidedInput(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendGuidedMessage()}
+                            placeholder="Keep reflecting..."
+                            className="flex-1 px-4 py-3 rounded-full border focus:outline-none text-sm"
+                            style={{ borderColor: BRAND.lightGray }}
+                          />
+                          <button
+                            onClick={sendGuidedMessage}
+                            disabled={!guidedInput.trim() || isGuidedLoading}
+                            className="w-11 h-11 rounded-full flex items-center justify-center disabled:opacity-30"
+                            style={{ backgroundColor: BRAND.chartreuse }}
+                          >
+                            ↑
+                          </button>
+                        </div>
+                        {guidedMessages.filter(m => m.role === 'user').length >= 3 && (
+                          <button
+                            onClick={wrapUpReflection}
+                            className="w-full text-center text-xs py-2 mb-3 rounded-lg"
+                            style={{ backgroundColor: BRAND.cream, color: BRAND.warmGray }}
+                          >
+                            ✓ Click when you're ready to wrap up
+                          </button>
+                        )}
+                        <div className="flex gap-2">
+                          <button
+                            onClick={cancelGuidedReflection}
+                            className="px-4 py-2 rounded-lg text-xs"
+                            style={{ backgroundColor: 'white', border: `1px solid ${BRAND.lightGray}`, color: BRAND.warmGray }}
+                          >
+                            ← Back to write
+                          </button>
+                          <button
+                            onClick={saveGuidedReflection}
+                            disabled={guidedMessages.filter(m => m.role === 'user').length === 0}
+                            className="px-4 py-2 rounded-lg text-xs disabled:opacity-30"
+                            style={{ backgroundColor: BRAND.chartreuse, color: BRAND.charcoal }}
+                          >
+                            💾 Save to journal
+                          </button>
+                        </div>
+                      </>
+                    ) : (
                       <button
                         onClick={saveGuidedReflection}
-                        disabled={guidedMessages.filter(m => m.role === 'user').length === 0}
-                        className="px-4 py-2 rounded-lg text-xs disabled:opacity-30"
+                        className="w-full py-3 rounded-lg text-sm"
                         style={{ backgroundColor: BRAND.chartreuse, color: BRAND.charcoal }}
                       >
                         💾 Save to journal
                       </button>
-                    </div>
+                    )}
                   </div>
                 </div>
               )}
