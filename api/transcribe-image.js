@@ -69,7 +69,7 @@ export default async function handler(req, res) {
             },
             {
               type: "text",
-              text: "Transcribe the handwritten text in this image EXACTLY and VERBATIM. Copy every word precisely as written - do not interpret, summarize, paraphrase, or improve the writing. Include all words, even if they seem incomplete or contain errors. Preserve original spelling, punctuation, and line breaks. Output ONLY the exact transcribed text, nothing else."
+              text: "You are an OCR tool. Output ONLY the raw text visible in this image. Do not add any commentary, interpretation, corrections, or formatting. Do not fix spelling or grammar. Do not summarize. Just output the exact characters and words you see, preserving line breaks. Nothing else."
             }
           ]
         }]
