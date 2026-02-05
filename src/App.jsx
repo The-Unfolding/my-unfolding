@@ -1136,7 +1136,7 @@ export default function MyUnfolding() {
             <NavButton active={view === 'history'} onClick={() => setView('history')}>History</NavButton>
             <NavButton active={view === 'patterns'} onClick={() => setView('patterns')}>Patterns</NavButton>
             <NavButton active={view === 'intentions'} onClick={() => setView('intentions')}>Intentions</NavButton>
-            <NavButton active={view === 'chat'} onClick={() => setView('chat')}>Chat</NavButton>
+            <NavButton active={view === 'chat'} onClick={() => setView('chat')}>Ask my journal</NavButton>
           </nav>
         </div>
       </header>
@@ -1703,14 +1703,14 @@ export default function MyUnfolding() {
           <div>
             <div className="text-center mb-6">
               <div className="w-16 h-1 mx-auto mb-6" style={{ backgroundColor: BRAND.chartreuse }} />
-              <h2 className="text-xl font-light italic mb-2" style={{ color: BRAND.charcoal }}>Ask your journal</h2>
+              <h2 className="text-xl font-light italic mb-2" style={{ color: BRAND.charcoal }}>Ask my journal</h2>
               <p className="text-sm" style={{ color: BRAND.warmGray }}>Search your entries, find patterns, see trends</p>
             </div>
             
             {entries.length < 3 ? (
               <div className="text-center py-12">
                 <p style={{ color: BRAND.warmGray }}>Write a few more entries first.</p>
-                <p className="text-sm mt-2" style={{ color: BRAND.lightGray }}>Chat works best with 3+ entries.</p>
+                <p className="text-sm mt-2" style={{ color: BRAND.lightGray }}>This works best with 3+ entries.</p>
               </div>
             ) : (
               <>
