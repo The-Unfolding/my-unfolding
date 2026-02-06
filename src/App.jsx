@@ -141,7 +141,478 @@ const VesselLogo = ({ size = 40, color = BRAND.charcoal }) => (
   </svg>
 );
 
+
+// Auth Screen Components
+const AuthScreen = ({ children }) => (
+  <div className="min-h-screen flex items-center justify-center p-6" style={{ backgroundColor: BRAND.cream }}>
+    <div className="w-full max-w-sm">
+      {children}
+    </div>
+  </div>
+);
+
+const SignUpScreen = ({ onSignUp, onSwitchToSignIn, isLoading, error }) => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSignUp(email, password);
+  };
+  
+  return (
+    <AuthScreen>
+      <div className="bg-white rounded-2xl p-8 shadow-sm">
+        <div className="text-center mb-8">
+          <VesselLogo size={40} color={BRAND.charcoal} />
+          <h1 className="text-2xl font-light italic mt-4" style={{ color: BRAND.charcoal }}>My Unfolding</h1>
+        </div>
+        
+        <form onSubmit={handleSubmit}>
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-1" style={{ color: BRAND.charcoal }}>Email</label>
+            <input 
+              type="email" 
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              className="w-full p-3 border rounded-lg text-base"
+              style={{ borderColor: BRAND.lightGray }}
+              required
+            />
+          </div>
+          
+          <div className="mb-6">
+            <label className="block text-sm font-medium mb-1" style={{ color: BRAND.charcoal }}>Password</label>
+            <input 
+              type="password" 
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Create a password"
+              className="w-full p-3 border rounded-lg text-base"
+              style={{ borderColor: BRAND.lightGray }}
+              required
+              minLength={6}
+            />
+          </div>
+          
+          {error && (
+            <p className="text-red-500 text-sm mb-4">{error}</p>
+          )}
+          
+          <button 
+            type="submit"
+            disabled={isLoading}
+            className="w-full py-3 rounded-lg font-semibold transition-all disabled:opacity-50"
+            style={{ backgroundColor: BRAND.chartreuse, color: BRAND.charcoal }}>
+            {isLoading ? 'Creating account...' : 'Continue'}
+          </button>
+        </form>
+        
+        <p className="text-center mt-6 text-sm" style={{ color: BRAND.warmGray }}>
+          Already have an account?{' '}
+          <button onClick={onSwitchToSignIn} className="font-semibold" style={{ color: BRAND.charcoal }}>
+            Sign in
+          </button>
+        </p>
+      </div>
+    </AuthScreen>
+  );
+};
+
+const SignInScreen = ({ onSignIn, onSwitchToSignUp, isLoading, error }) => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSignIn(email, password);
+  };
+  
+  return (
+    <AuthScreen>
+      <div className="bg-white rounded-2xl p-8 shadow-sm">
+        <div className="text-center mb-8">
+          <VesselLogo size={40} color={BRAND.charcoal} />
+          <h1 className="text-2xl font-light italic mt-4" style={{ color: BRAND.charcoal }}>My Unfolding</h1>
+        </div>
+        
+        <form onSubmit={handleSubmit}>
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-1" style={{ color: BRAND.charcoal }}>Email</label>
+            <input 
+              type="email" 
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              className="w-full p-3 border rounded-lg text-base"
+              style={{ borderColor: BRAND.lightGray }}
+              required
+            />
+          </div>
+          
+          <div className="mb-6">
+            <label className="block text-sm font-medium mb-1" style={{ color: BRAND.charcoal }}>Password</label>
+            <input 
+              type="password" 
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Your password"
+              className="w-full p-3 border rounded-lg text-base"
+              style={{ borderColor: BRAND.lightGray }}
+              required
+            />
+          </div>
+          
+          {error && (
+            <p className="text-red-500 text-sm mb-4">{error}</p>
+          )}
+          
+          <button 
+            type="submit"
+            disabled={isLoading}
+            className="w-full py-3 rounded-lg font-semibold transition-all disabled:opacity-50"
+            style={{ backgroundColor: BRAND.chartreuse, color: BRAND.charcoal }}>
+            {isLoading ? 'Signing in...' : 'Sign In'}
+          </button>
+        </form>
+        
+        <p className="text-center mt-6 text-sm" style={{ color: BRAND.warmGray }}>
+          Don't have an account?{' '}
+          <button onClick={onSwitchToSignUp} className="font-semibold" style={{ color: BRAND.charcoal }}>
+            Sign up
+          </button>
+        </p>
+      </div>
+    </AuthScreen>
+  );
+};
+
+const ChoosePlanScreen = ({ onSelectPlan, onBack, onInviteCode, isValidatingCode, codeError }) => {
+  const [selected, setSelected] = useState('annual');
+  const [showInviteCode, setShowInviteCode] = useState(false);
+  const [inviteCode, setInviteCode] = useState('');
+  
+  const handleApplyCode = () => {
+    if (inviteCode.trim()) {
+      onInviteCode(inviteCode.trim());
+    }
+  };
+  
+  return (
+    <AuthScreen>
+      <div className="bg-white rounded-2xl p-8 shadow-sm">
+        <button 
+          onClick={onBack}
+          className="text-sm mb-4"
+          style={{ color: BRAND.warmGray }}>
+          ← Back
+        </button>
+        
+        <div className="text-center mb-6">
+          <VesselLogo size={32} color={BRAND.charcoal} />
+          <h1 className="text-xl font-medium mt-3" style={{ color: BRAND.charcoal }}>Choose your plan</h1>
+          <p className="text-sm mt-1" style={{ color: BRAND.warmGray }}>Full access to everything. Cancel anytime.</p>
+        </div>
+        
+        {/* Invite Code Section */}
+        <div className="border rounded-xl p-4 mb-5" style={{ borderColor: BRAND.lightGray }}>
+          {!showInviteCode ? (
+            <button 
+              onClick={() => setShowInviteCode(true)}
+              className="w-full flex items-center gap-2 text-sm"
+              style={{ color: BRAND.charcoal }}>
+              <span>🎟️</span>
+              <span>Have an invite code?</span>
+              <span className="ml-auto" style={{ color: BRAND.warmGray }}>→</span>
+            </button>
+          ) : (
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <span>🎟️</span>
+                <span className="text-sm font-medium" style={{ color: BRAND.charcoal }}>Enter your invite code</span>
+              </div>
+              <div className="flex gap-2">
+                <input 
+                  type="text" 
+                  placeholder="e.g. SARAH2024"
+                  value={inviteCode}
+                  onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+                  className="flex-1 p-3 border rounded-lg text-sm uppercase"
+                  style={{ borderColor: codeError ? '#e74c3c' : BRAND.lightGray, backgroundColor: BRAND.cream }}
+                />
+                <button 
+                  onClick={handleApplyCode}
+                  disabled={isValidatingCode}
+                  className="px-4 py-2 rounded-lg text-sm font-medium text-white disabled:opacity-50"
+                  style={{ backgroundColor: BRAND.charcoal }}>
+                  {isValidatingCode ? '...' : 'Apply'}
+                </button>
+              </div>
+              {codeError && (
+                <p className="text-xs text-red-500 mt-2">{codeError}</p>
+              )}
+              <button 
+                onClick={() => { setShowInviteCode(false); setInviteCode(''); }}
+                className="text-xs mt-2"
+                style={{ color: BRAND.warmGray }}>
+                Cancel
+              </button>
+            </div>
+          )}
+        </div>
+        
+        {/* Annual Plan */}
+        <div 
+          onClick={() => setSelected('annual')}
+          className="border-2 rounded-2xl p-5 mb-3 cursor-pointer relative"
+          style={{ 
+            backgroundColor: selected === 'annual' ? 'white' : BRAND.cream,
+            borderColor: selected === 'annual' ? BRAND.chartreuse : BRAND.lightGray 
+          }}>
+          {selected === 'annual' && (
+            <div className="absolute -top-2 right-4 px-3 py-1 rounded-full text-xs font-semibold"
+              style={{ backgroundColor: BRAND.chartreuse, color: BRAND.charcoal }}>
+              BEST VALUE
+            </div>
+          )}
+          <div className="flex justify-between items-center">
+            <div>
+              <p className="font-semibold" style={{ color: BRAND.charcoal }}>Annual</p>
+              <p className="text-sm" style={{ color: BRAND.warmGray }}>$6.58/month, billed yearly</p>
+            </div>
+            <div className="text-right">
+              <p className="text-2xl font-semibold" style={{ color: BRAND.charcoal }}>$79</p>
+              <p className="text-xs" style={{ color: BRAND.warmGray }}>/year</p>
+            </div>
+          </div>
+        </div>
+        
+        {/* Monthly Plan */}
+        <div 
+          onClick={() => setSelected('monthly')}
+          className="border-2 rounded-2xl p-5 mb-6 cursor-pointer"
+          style={{ 
+            backgroundColor: selected === 'monthly' ? 'white' : BRAND.cream,
+            borderColor: selected === 'monthly' ? BRAND.chartreuse : BRAND.lightGray 
+          }}>
+          <div className="flex justify-between items-center">
+            <div>
+              <p className="font-semibold" style={{ color: BRAND.charcoal }}>Monthly</p>
+              <p className="text-sm" style={{ color: BRAND.warmGray }}>Flexible, cancel anytime</p>
+            </div>
+            <div className="text-right">
+              <p className="text-2xl font-semibold" style={{ color: BRAND.charcoal }}>$9.99</p>
+              <p className="text-xs" style={{ color: BRAND.warmGray }}>/month</p>
+            </div>
+          </div>
+        </div>
+        
+        <button 
+          onClick={() => onSelectPlan(selected)}
+          className="w-full py-3 rounded-xl font-semibold"
+          style={{ backgroundColor: BRAND.chartreuse, color: BRAND.charcoal }}>
+          Continue to Payment
+        </button>
+        
+        <div className="mt-5">
+          <p className="text-xs font-medium mb-2" style={{ color: BRAND.charcoal }}>What's included:</p>
+          {['Unlimited journaling with CORE prompts', 'Guided reflection with AI', 'Pattern recognition', 'Ask your journal questions', 'Voice & image input'].map((item, i) => (
+            <p key={i} className="text-xs mb-1" style={{ color: BRAND.warmGray }}>✓ {item}</p>
+          ))}
+        </div>
+      </div>
+    </AuthScreen>
+  );
+};
+
+const WelcomeScreen = ({ accessType, onContinue }) => (
+  <AuthScreen>
+    <div className="bg-white rounded-2xl p-8 shadow-sm text-center">
+      <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6"
+        style={{ backgroundColor: BRAND.chartreuse }}>
+        <span className="text-4xl">✓</span>
+      </div>
+      
+      <h1 className="text-2xl font-light mb-3" style={{ color: BRAND.charcoal }}>
+        Welcome to My Unfolding
+      </h1>
+      
+      <p className="font-medium" style={{ color: BRAND.charcoal }}>
+        {accessType === 'coaching' ? 'Access activated ✓' : 'Your subscription is active'}
+      </p>
+      
+      {accessType !== 'coaching' && (
+        <p className="text-sm mt-2" style={{ color: BRAND.warmGray }}>
+          A receipt has been sent to your email
+        </p>
+      )}
+      
+      <button 
+        onClick={onContinue}
+        className="w-full py-3 rounded-xl font-semibold mt-8"
+        style={{ backgroundColor: BRAND.chartreuse, color: BRAND.charcoal }}>
+        Continue →
+      </button>
+    </div>
+  </AuthScreen>
+);
+
+const OnboardingWriteScreen = ({ onNext }) => (
+  <AuthScreen>
+    <div className="bg-white rounded-2xl p-8 shadow-sm">
+      <div className="text-center mb-6">
+        <span className="text-5xl">✍️</span>
+      </div>
+      
+      <h1 className="text-xl font-medium text-center mb-4" style={{ color: BRAND.charcoal }}>
+        How to write here
+      </h1>
+      
+      <p className="text-sm text-center mb-5 leading-relaxed" style={{ color: BRAND.charcoal }}>
+        Write as if you're talking to yourself. Question yourself. Let different parts of you show up on the page.
+      </p>
+      
+      <div className="p-4 rounded-xl mb-5" style={{ backgroundColor: BRAND.chartreuse + '30' }}>
+        <p className="text-sm italic" style={{ color: BRAND.charcoal }}>
+          "I froze in that meeting. Why did I freeze? I think I was scared I had it wrong..."
+        </p>
+      </div>
+      
+      <p className="text-sm text-center leading-relaxed" style={{ color: BRAND.warmGray }}>
+        When you write honestly—without editing or performing—patterns emerge that you couldn't see before.
+      </p>
+      
+      <button 
+        onClick={onNext}
+        className="w-full py-3 rounded-xl font-semibold mt-6"
+        style={{ backgroundColor: BRAND.chartreuse, color: BRAND.charcoal }}>
+        Next
+      </button>
+    </div>
+  </AuthScreen>
+);
+
+const OnboardingBeforeScreen = ({ onComplete }) => (
+  <AuthScreen>
+    <div className="bg-white rounded-2xl p-8 shadow-sm">
+      <h1 className="text-xl font-medium text-center mb-6" style={{ color: BRAND.charcoal }}>
+        Before you begin
+      </h1>
+      
+      <div className="space-y-4">
+        <div className="flex gap-3">
+          <span className="text-xl">🔒</span>
+          <div>
+            <p className="text-sm font-medium" style={{ color: BRAND.charcoal }}>Your entries stay on your device</p>
+            <p className="text-xs" style={{ color: BRAND.warmGray }}>Nothing is stored on our servers. Use Print in History to back up.</p>
+          </div>
+        </div>
+        
+        <div className="flex gap-3">
+          <span className="text-xl">🔍</span>
+          <div>
+            <p className="text-sm font-medium" style={{ color: BRAND.charcoal }}>Pattern analysis uses AI</p>
+            <p className="text-xs" style={{ color: BRAND.warmGray }}>When you use it, entries are sent to Claude for processing, then discarded.</p>
+          </div>
+        </div>
+        
+        <div className="flex gap-3">
+          <span className="text-xl">📱</span>
+          <div>
+            <p className="text-sm font-medium" style={{ color: BRAND.charcoal }}>One device at a time</p>
+            <p className="text-xs" style={{ color: BRAND.warmGray }}>Your entries live in this browser only.</p>
+          </div>
+        </div>
+        
+        <div className="flex gap-3">
+          <span className="text-xl">💙</span>
+          <div>
+            <p className="text-sm font-medium" style={{ color: BRAND.charcoal }}>This is for reflection, not advice</p>
+            <p className="text-xs" style={{ color: BRAND.warmGray }}>Not therapy, medical, financial, or legal counsel. Trust your own judgment.</p>
+          </div>
+        </div>
+      </div>
+      
+      <button 
+        onClick={onComplete}
+        className="w-full py-3 rounded-xl font-semibold mt-6"
+        style={{ backgroundColor: BRAND.chartreuse, color: BRAND.charcoal }}>
+        I understand — let's go
+      </button>
+      
+      <p className="text-xs text-center mt-3 leading-relaxed" style={{ color: BRAND.warmGray }}>
+        By continuing, you confirm you understand your data is stored locally and this is not professional advice.
+      </p>
+    </div>
+  </AuthScreen>
+);
+
+const AccessEndedScreen = ({ onSubscribe }) => (
+  <AuthScreen>
+    <div className="bg-white rounded-2xl p-8 shadow-sm text-center">
+      <VesselLogo size={48} color={BRAND.charcoal} />
+      
+      <h1 className="text-xl font-medium mt-6 mb-3" style={{ color: BRAND.charcoal }}>
+        Your coaching access has ended
+      </h1>
+      
+      <p className="text-sm mb-6 leading-relaxed" style={{ color: BRAND.warmGray }}>
+        Your journal entries are safe. Subscribe to continue using My Unfolding.
+      </p>
+      
+      {/* Plan options */}
+      <div className="border-2 rounded-2xl p-4 mb-3 relative" style={{ borderColor: BRAND.chartreuse }}>
+        <div className="absolute -top-2 right-4 px-2 py-0.5 rounded-full text-xs font-semibold"
+          style={{ backgroundColor: BRAND.chartreuse, color: BRAND.charcoal }}>
+          BEST VALUE
+        </div>
+        <div className="flex justify-between items-center">
+          <div className="text-left">
+            <p className="font-semibold" style={{ color: BRAND.charcoal }}>Annual</p>
+            <p className="text-xs" style={{ color: BRAND.warmGray }}>$6.58/month</p>
+          </div>
+          <p className="text-xl font-semibold" style={{ color: BRAND.charcoal }}>$79<span className="text-sm font-normal">/yr</span></p>
+        </div>
+      </div>
+      
+      <div className="border rounded-2xl p-4 mb-6" style={{ borderColor: BRAND.lightGray }}>
+        <div className="flex justify-between items-center">
+          <div className="text-left">
+            <p className="font-semibold" style={{ color: BRAND.charcoal }}>Monthly</p>
+            <p className="text-xs" style={{ color: BRAND.warmGray }}>Cancel anytime</p>
+          </div>
+          <p className="text-xl font-semibold" style={{ color: BRAND.charcoal }}>$9.99<span className="text-sm font-normal">/mo</span></p>
+        </div>
+      </div>
+      
+      <button 
+        onClick={onSubscribe}
+        className="w-full py-3 rounded-xl font-semibold"
+        style={{ backgroundColor: BRAND.chartreuse, color: BRAND.charcoal }}>
+        Subscribe to Continue
+      </button>
+      
+      <p className="text-sm mt-4" style={{ color: BRAND.warmGray }}>
+        Questions? <span className="font-medium" style={{ color: BRAND.charcoal }}>Contact your coach</span>
+      </p>
+    </div>
+  </AuthScreen>
+);
+
+
 export default function MyUnfolding() {
+  // Auth state
+  const [authView, setAuthView] = useState('loading'); // loading, signin, signup, choosePlan, payment, welcome, onboarding1, onboarding2, app, accessEnded
+  const [user, setUser] = useState(null);
+  const [accessType, setAccessType] = useState(null); // 'coaching', 'paid', 'none'
+  const [authError, setAuthError] = useState('');
+  const [isAuthLoading, setIsAuthLoading] = useState(false);
+  const [isValidatingCode, setIsValidatingCode] = useState(false);
+  const [codeError, setCodeError] = useState('');
+  const [pendingSignup, setPendingSignup] = useState(null); // Store signup data while validating code
+  
+  // Original app state
   const [hasConsented, setHasConsented] = useState(false);
   const [showWelcome, setShowWelcome] = useState(true);
   const [welcomeStep, setWelcomeStep] = useState(0);
@@ -191,6 +662,164 @@ export default function MyUnfolding() {
   const recognitionRef = useRef(null);
   const guidedMessagesEndRef = useRef(null);
 
+  // Check auth on load
+  useEffect(() => {
+    const savedAuth = localStorage.getItem('myUnfoldingAuth');
+    if (savedAuth) {
+      const authData = JSON.parse(savedAuth);
+      if (authData.user && authData.accessType && authData.accessType !== 'none') {
+        setUser(authData.user);
+        setAccessType(authData.accessType);
+        setAuthView('app');
+      } else if (authData.user && authData.accessType === 'none') {
+        // User exists but no access - show choose plan
+        setUser(authData.user);
+        setAuthView('choosePlan');
+      } else {
+        setAuthView('signin');
+      }
+    } else {
+      setAuthView('signin');
+    }
+  }, []);
+
+  // Auth handlers
+  const handleSignUp = async (email, password) => {
+    setIsAuthLoading(true);
+    setAuthError('');
+    
+    try {
+      const res = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      
+      const data = await res.json();
+      
+      if (!res.ok) {
+        setAuthError(data.error || 'Failed to create account');
+        setIsAuthLoading(false);
+        return;
+      }
+      
+      setUser(data.user);
+      setAccessType(data.accessType);
+      localStorage.setItem('myUnfoldingAuth', JSON.stringify({ user: data.user, accessType: data.accessType }));
+      
+      if (data.accessType === 'coaching' || data.accessType === 'paid') {
+        setAuthView('welcome');
+      } else {
+        setPendingSignup({ email, password });
+        setAuthView('choosePlan');
+      }
+    } catch (err) {
+      setAuthError('Network error. Please try again.');
+    }
+    
+    setIsAuthLoading(false);
+  };
+  
+  const handleSignIn = async (email, password) => {
+    setIsAuthLoading(true);
+    setAuthError('');
+    
+    try {
+      const res = await fetch('/api/auth/signin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      
+      const data = await res.json();
+      
+      if (!res.ok) {
+        if (data.error === 'access_ended') {
+          setUser(data.user);
+          setAuthView('accessEnded');
+        } else {
+          setAuthError(data.error || 'Invalid email or password');
+        }
+        setIsAuthLoading(false);
+        return;
+      }
+      
+      setUser(data.user);
+      setAccessType(data.accessType);
+      localStorage.setItem('myUnfoldingAuth', JSON.stringify({ user: data.user, accessType: data.accessType }));
+      
+      if (data.accessType === 'coaching' || data.accessType === 'paid') {
+        setAuthView('app');
+      } else {
+        setAuthView('choosePlan');
+      }
+    } catch (err) {
+      setAuthError('Network error. Please try again.');
+    }
+    
+    setIsAuthLoading(false);
+  };
+  
+  const handleInviteCode = async (code) => {
+    setIsValidatingCode(true);
+    setCodeError('');
+    
+    try {
+      const res = await fetch('/api/validate-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code })
+      });
+      
+      const data = await res.json();
+      
+      if (!res.ok || !data.valid) {
+        setCodeError(data.error || 'Invalid or already used code');
+        setIsValidatingCode(false);
+        return;
+      }
+      
+      // Code is valid - create account with coaching access
+      if (pendingSignup) {
+        const signupRes = await fetch('/api/auth/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            email: pendingSignup.email, 
+            password: pendingSignup.password,
+            inviteCode: code 
+          })
+        });
+        
+        const signupData = await signupRes.json();
+        
+        if (signupRes.ok) {
+          setUser(signupData.user);
+          setAccessType('coaching');
+          localStorage.setItem('myUnfoldingAuth', JSON.stringify({ user: signupData.user, accessType: 'coaching' }));
+          setAuthView('welcome');
+        } else {
+          setCodeError(signupData.error || 'Failed to apply code');
+        }
+      }
+    } catch (err) {
+      setCodeError('Network error. Please try again.');
+    }
+    
+    setIsValidatingCode(false);
+  };
+  
+  const handleSelectPlan = (plan) => {
+    // For now, just show a message - Stripe integration comes later
+    alert(`Stripe payment for ${plan} plan coming soon! For now, use an invite code.`);
+  };
+  
+  const handleOnboardingComplete = () => {
+    setHasConsented(true);
+    setAuthView('app');
+  };
+
+
   // Check for Web Speech API support
   useEffect(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -206,7 +835,7 @@ export default function MyUnfolding() {
       setIntentions(data.intentions || []);
       setCompletedIntentions(data.completedIntentions || []);
       setHasConsented(data.hasConsented || false);
-      setShowWelcome(!data.hasConsented);
+      // Don't set showWelcome here - auth flow handles onboarding now
     }
   }, []);
 
@@ -218,6 +847,77 @@ export default function MyUnfolding() {
     }
   }, [entries, patterns, intentions, completedIntentions, hasConsented]);
 
+  // Auth screens rendering
+  if (authView === 'loading') {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: BRAND.cream }}>
+        <VesselLogo size={48} color={BRAND.charcoal} />
+      </div>
+    );
+  }
+  
+  if (authView === 'signin') {
+    return (
+      <SignInScreen 
+        onSignIn={handleSignIn}
+        onSwitchToSignUp={() => { setAuthView('signup'); setAuthError(''); }}
+        isLoading={isAuthLoading}
+        error={authError}
+      />
+    );
+  }
+  
+  if (authView === 'signup') {
+    return (
+      <SignUpScreen 
+        onSignUp={handleSignUp}
+        onSwitchToSignIn={() => { setAuthView('signin'); setAuthError(''); }}
+        isLoading={isAuthLoading}
+        error={authError}
+      />
+    );
+  }
+  
+  if (authView === 'choosePlan') {
+    return (
+      <ChoosePlanScreen 
+        onSelectPlan={handleSelectPlan}
+        onBack={() => setAuthView('signup')}
+        onInviteCode={handleInviteCode}
+        isValidatingCode={isValidatingCode}
+        codeError={codeError}
+      />
+    );
+  }
+  
+  if (authView === 'welcome') {
+    return (
+      <WelcomeScreen 
+        accessType={accessType}
+        onContinue={() => setAuthView('onboarding1')}
+      />
+    );
+  }
+  
+  if (authView === 'onboarding1') {
+    return (
+      <OnboardingWriteScreen onNext={() => setAuthView('onboarding2')} />
+    );
+  }
+  
+  if (authView === 'onboarding2') {
+    return (
+      <OnboardingBeforeScreen onComplete={handleOnboardingComplete} />
+    );
+  }
+  
+  if (authView === 'accessEnded') {
+    return (
+      <AccessEndedScreen onSubscribe={() => setAuthView('choosePlan')} />
+    );
+  }
+
+  // Rest of the original app code follows...
   const selectPhase = (phase) => {
     if (selectedPhase === phase) {
       setSelectedPhase(null);
@@ -827,152 +1527,6 @@ export default function MyUnfolding() {
     </button>
   );
 
-  // WELCOME SCREEN
-  if (showWelcome || !hasConsented) {
-    const welcomeSteps = [
-      {
-        content: (
-          <div className="text-center">
-            <VesselLogo size={56} color={BRAND.charcoal} />
-            <h1 className="text-3xl font-light italic mt-6 mb-3" style={{ color: BRAND.charcoal }}>My Unfolding</h1>
-            <p className="text-lg mb-2" style={{ color: BRAND.warmGray }}>A private space for reflection</p>
-            <p className="text-sm mt-6 leading-relaxed" style={{ color: BRAND.charcoal }}>
-              This is your space to reflect on your personal leadership journey. Capture your thoughts, notice how you're winning, how you're growing, and see patterns emerge over time.
-            </p>
-          </div>
-        ),
-        button: "Let's begin"
-      },
-      {
-        content: (
-          <div className="text-center">
-            <div className="text-4xl mb-4">✍️</div>
-            <h2 className="text-xl font-medium mb-4" style={{ color: BRAND.charcoal }}>How to write here</h2>
-            <p className="text-sm leading-relaxed mb-4" style={{ color: BRAND.charcoal }}>
-              Write as if you're talking to yourself. Question yourself. Let different parts of you show up on the page.
-            </p>
-            <p className="text-sm leading-relaxed" style={{ color: BRAND.charcoal }}>
-              When you write honestly—without editing or performing—patterns emerge that you couldn't see before.
-            </p>
-            <div className="mt-6 p-4 rounded-lg" style={{ backgroundColor: BRAND.chartreuse + '30' }}>
-              <p className="text-sm italic" style={{ color: BRAND.charcoal }}>
-                e.g. "I froze. Why did you freeze? I froze because I was scared I had it wrong."
-              </p>
-            </div>
-          </div>
-        ),
-        button: "Got it"
-      },
-      {
-        content: (
-          <div className="text-center">
-            <div className="text-4xl mb-4">🔒</div>
-            <h2 className="text-xl font-medium mb-4" style={{ color: BRAND.charcoal }}>Your data stays yours</h2>
-            <p className="text-sm mb-4" style={{ color: BRAND.warmGray }}>We want to be transparent about your data:</p>
-            <div className="text-left space-y-3">
-              <p className="text-sm" style={{ color: BRAND.charcoal }}>
-                <strong>Stored on your device</strong> — entries live in your browser only, not on any server.
-              </p>
-              <p className="text-sm" style={{ color: BRAND.charcoal }}>
-                <strong>One device at a time</strong> — if you use a different device or browser, your entries won't be there.
-              </p>
-              <p className="text-sm" style={{ color: BRAND.charcoal }}>
-                <strong>Pattern analysis</strong> — when you use it, entries are sent to Claude AI for processing, then discarded.
-              </p>
-              <p className="text-sm" style={{ color: BRAND.charcoal }}>
-                <strong>No time limit</strong> — journal for years. Data stays until you delete it.
-              </p>
-              <p className="text-sm" style={{ color: BRAND.warmGray }}>
-                💡 Use Print in History to back up your entries.
-              </p>
-            </div>
-          </div>
-        ),
-        button: "I understand"
-      },
-      {
-        content: (
-          <div className="text-center">
-            <div className="text-4xl mb-4">💙</div>
-            <h2 className="text-xl font-medium mb-4" style={{ color: BRAND.charcoal }}>A note on what this is</h2>
-            <p className="text-sm leading-relaxed mb-4" style={{ color: BRAND.charcoal }}>
-              This is a tool for personal reflection—not therapy, medical advice, financial advice, or legal counsel.
-            </p>
-            <p className="text-sm leading-relaxed mb-4" style={{ color: BRAND.charcoal }}>
-              The AI-generated patterns are meant to surface themes for <em>your</em> consideration. Trust your own judgment about what resonates.
-            </p>
-            <p className="text-sm leading-relaxed" style={{ color: BRAND.warmGray }}>
-              If you're in crisis, please reach out to a licensed professional.
-            </p>
-          </div>
-        ),
-        button: "I understand"
-      },
-      {
-        content: (
-          <div className="text-center">
-            <div className="text-4xl mb-4">✨</div>
-            <h2 className="text-xl font-medium mb-4" style={{ color: BRAND.charcoal }}>You're ready</h2>
-            <p className="text-sm leading-relaxed mb-6" style={{ color: BRAND.charcoal }}>
-              Your journal is waiting. Write when you need to think. Come back to see what emerges.
-            </p>
-            <div className="p-4 rounded-lg" style={{ backgroundColor: BRAND.cream }}>
-              <p className="text-xs" style={{ color: BRAND.warmGray }}>
-                By continuing, you confirm you understand your data is stored locally, pattern analysis uses AI, and this is not professional advice.
-              </p>
-            </div>
-          </div>
-        ),
-        button: "Begin my journal"
-      }
-    ];
-
-    const currentWelcomeStep = welcomeSteps[welcomeStep];
-    const isLastStep = welcomeStep === welcomeSteps.length - 1;
-
-    const handleWelcomeNext = () => {
-      if (isLastStep) {
-        setHasConsented(true);
-        setShowWelcome(false);
-      } else {
-        setWelcomeStep(welcomeStep + 1);
-      }
-    };
-
-    return (
-      <div className="min-h-screen flex items-center justify-center p-6" style={{ backgroundColor: BRAND.cream }}>
-        <div className="max-w-md w-full">
-          <div className="bg-white rounded-2xl p-8 shadow-sm">
-            {currentWelcomeStep.content}
-            
-            <button 
-              onClick={handleWelcomeNext}
-              className="w-full py-3 rounded-lg mt-8 transition-all"
-              style={{ 
-                backgroundColor: isLastStep ? BRAND.chartreuse : BRAND.charcoal, 
-                color: isLastStep ? BRAND.charcoal : 'white' 
-              }}
-            >
-              {currentWelcomeStep.button}
-            </button>
-            
-            <div className="flex justify-center gap-2 mt-6">
-              {welcomeSteps.map((_, i) => (
-                <div 
-                  key={i} 
-                  className="w-2 h-2 rounded-full transition-all"
-                  style={{ 
-                    backgroundColor: i === welcomeStep ? BRAND.charcoal : BRAND.lightGray,
-                    transform: i === welcomeStep ? 'scale(1.2)' : 'scale(1)'
-                  }}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: BRAND.cream }}>
