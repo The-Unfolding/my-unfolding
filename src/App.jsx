@@ -685,39 +685,18 @@ export default function MyUnfolding() {
 
   // Auth handlers
   const handleSignUp = async (email, password) => {
-    setIsAuthLoading(true);
-    setAuthError('');
-    
-    try {
-      const res = await fetch('/api/auth/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
-      
-      const data = await res.json();
-      
-      if (!res.ok) {
-        setAuthError(data.error || 'Failed to create account');
-        setIsAuthLoading(false);
-        return;
-      }
-      
-      setUser(data.user);
-      setAccessType(data.accessType);
-      localStorage.setItem('myUnfoldingAuth', JSON.stringify({ user: data.user, accessType: data.accessType }));
-      
-      if (data.accessType === 'coaching' || data.accessType === 'paid') {
-        setAuthView('welcome');
-      } else {
-        setPendingSignup({ email, password });
-        setAuthView('choosePlan');
-      }
-    } catch (err) {
-      setAuthError('Network error. Please try again.');
+    // Just store credentials and go to choose plan
+    // Account is created when they enter invite code or pay
+    if (!email || !password) {
+      setAuthError('Email and password required');
+      return;
     }
-    
-    setIsAuthLoading(false);
+    if (password.length < 6) {
+      setAuthError('Password must be at least 6 characters');
+      return;
+    }
+    setPendingSignup({ email, password });
+    setAuthView('choosePlan');
   };
   
   const handleSignIn = async (email, password) => {
