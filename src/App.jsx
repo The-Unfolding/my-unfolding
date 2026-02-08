@@ -116,6 +116,18 @@ const Confetti = ({ active }) => {
         />
       ))}
       <style>{`
+        * { box-sizing: border-box; }
+        html, body { overflow-x: hidden !important; max-width: 100vw; }
+        main, div, section, article, p, span, h1, h2, h3, h4, textarea, input { 
+          max-width: 100% !important; 
+          overflow-wrap: break-word; 
+          word-wrap: break-word; 
+        }
+        @media (max-width: 640px) {
+          main { padding-left: 8px !important; padding-right: 8px !important; }
+          .sticky { padding-left: 8px !important; padding-right: 8px !important; }
+        }
+  
         @keyframes confetti-fall {
           0% { transform: translateY(0) rotate(0deg); opacity: 1; }
           100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
@@ -1606,7 +1618,7 @@ export default function MyUnfolding() {
 
 
   return (
-    <div className="min-h-screen" style={{ whiteSpace: "nowrap", flexShrink: 0, fontSize: "13px", padding: "8px 6px", fontSize: "0.8rem", backgroundColor: BRAND.cream }}>
+    <div className="min-h-screen" style={{ whiteSpace: "nowrap", flexShrink: 0, fontSize: "0.7rem", padding: "6px 2px", fontSize: "0.8rem", backgroundColor: BRAND.cream }}>
       <Confetti active={showConfetti} />
       
       {showCelebration && (
@@ -1756,7 +1768,7 @@ export default function MyUnfolding() {
               <VesselLogo size={28} color={BRAND.charcoal} />
               <h1 className="text-xl font-light italic" style={{ color: BRAND.charcoal }}>My Unfolding</h1>
             </div>
-            <div className="flex items-center justify-between w-full">
+            <div className="flex items-center justify-between w-full" style={{ maxWidth: "100%", fontSize: "0.75rem" }}>
               <button onClick={() => setShowFeedback(true)} className="text-xs px-3 py-1 rounded-full"
                 style={{ backgroundColor: BRAND.cream, color: BRAND.warmGray }}>Feedback</button>
               <button onClick={() => setView('settings')} className="text-sm" style={{ color: BRAND.warmGray }}>⚙</button>
