@@ -1606,7 +1606,7 @@ export default function MyUnfolding() {
 
 
   return (
-    <div className="min-h-screen" style={{ whiteSpace: "nowrap", flexShrink: 0, fontSize: "13px", padding: "8px 6px", whiteSpace: "nowrap", flexShrink: 0, backgroundColor: BRAND.cream }}>
+    <div className="min-h-screen" style={{ whiteSpace: "nowrap", flexShrink: 0, fontSize: "13px", padding: "8px 6px", fontSize: "0.8rem", backgroundColor: BRAND.cream }}>
       <Confetti active={showConfetti} />
       
       {showCelebration && (
@@ -1772,7 +1772,7 @@ export default function MyUnfolding() {
         </div>
       </header>
 
-      <main className="max-w-3xl mx-auto px-6 py-8">
+      <main className="max-w-3xl mx-auto px-3 sm:px-6 py-8" style={{ overflowX: "hidden" }}>
         
         {view === 'write' && (
           <div>
