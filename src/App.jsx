@@ -116,16 +116,18 @@ const Confetti = ({ active }) => {
         />
       ))}
       <style>{`
-        * { box-sizing: border-box; }
-        html, body { overflow-x: hidden !important; max-width: 100vw; }
-        main, div, section, article, p, span, h1, h2, h3, h4, textarea, input { 
-          max-width: 100% !important; 
+        html, body { 
+          width: 100%; 
+          overflow-x: hidden; 
+          -webkit-text-size-adjust: 100%;
+        }
+        * { box-sizing: border-box; max-width: 100vw; }
+        main, div, p, span, h1, h2, h3, textarea, input, section { 
           overflow-wrap: break-word; 
-          word-wrap: break-word; 
+          word-wrap: break-word;
         }
         @media (max-width: 640px) {
-          main { padding-left: 8px !important; padding-right: 8px !important; }
-          .sticky { padding-left: 8px !important; padding-right: 8px !important; }
+          .max-w-3xl { max-width: 100% !important; }
         }
   
         @keyframes confetti-fall {
@@ -1618,7 +1620,7 @@ export default function MyUnfolding() {
 
 
   return (
-    <div className="min-h-screen" style={{ whiteSpace: "nowrap", flexShrink: 0, fontSize: "0.7rem", padding: "6px 2px", fontSize: "0.8rem", backgroundColor: BRAND.cream }}>
+    <div className="min-h-screen" style={{ whiteSpace: "nowrap", flexShrink: 0, fontSize: "13px", padding: "8px 6px", fontSize: "0.7rem", padding: "6px 1px", backgroundColor: BRAND.cream }}>
       <Confetti active={showConfetti} />
       
       {showCelebration && (
@@ -1632,7 +1634,7 @@ export default function MyUnfolding() {
             <p className="text-sm mb-4" style={{ color: BRAND.warmGray }}>You completed an intention!</p>
             <button 
               onClick={() => setShowCelebration(false)} 
-              className="px-6 py-2 rounded-lg text-sm"
+              className="px-2 sm:px-6 py-2 rounded-lg text-sm"
               style={{ backgroundColor: BRAND.chartreuse, color: BRAND.charcoal }}
             >
               Keep going
@@ -1683,7 +1685,7 @@ export default function MyUnfolding() {
       )}
 
       {showAffirmation && (
-        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-full shadow-lg z-50 text-sm"
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 px-2 sm:px-6 py-3 rounded-full shadow-lg z-50 text-sm"
           style={{ backgroundColor: BRAND.charcoal, color: 'white' }}>
           {affirmation}
         </div>
@@ -1762,19 +1764,19 @@ export default function MyUnfolding() {
       )}
 
       <header className="bg-white border-b sticky top-0 z-40" style={{ borderColor: BRAND.lightGray }}>
-        <div className="max-w-3xl mx-auto px-6 py-4">
+        <div className="max-w-3xl mx-auto px-2 sm:px-6 py-4">
           <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1 sm:gap-3">
               <VesselLogo size={28} color={BRAND.charcoal} />
-              <h1 className="text-xl font-light italic" style={{ color: BRAND.charcoal }}>My Unfolding</h1>
+              <h1 className="text-base sm:text-xl font-light italic" style={{ color: BRAND.charcoal }}>My Unfolding</h1>
             </div>
-            <div className="flex items-center justify-between w-full" style={{ maxWidth: "100%", fontSize: "0.75rem" }}>
-              <button onClick={() => setShowFeedback(true)} className="text-xs px-3 py-1 rounded-full"
+            <div className="flex items-center justify-between w-full">
+              <button onClick={() => setShowFeedback(true)} className="text-xs px-1 sm:px-3 py-1 rounded-full"
                 style={{ backgroundColor: BRAND.cream, color: BRAND.warmGray }}>Feedback</button>
               <button onClick={() => setView('settings')} className="text-sm" style={{ color: BRAND.warmGray }}>⚙</button>
             </div>
           </div>
-          <nav className="flex gap-1">
+          <nav className="flex flex-wrap gap-1">
             <NavButton active={view === 'write'} onClick={() => setView('write')}>Write</NavButton>
             <NavButton active={view === 'history'} onClick={() => setView('history')}>History</NavButton>
             <NavButton active={view === 'patterns'} onClick={() => setView('patterns')}>Patterns</NavButton>
@@ -1784,7 +1786,7 @@ export default function MyUnfolding() {
         </div>
       </header>
 
-      <main className="max-w-3xl mx-auto px-3 sm:px-6 py-8" style={{ overflowX: "hidden" }}>
+      <main className="max-w-3xl mx-auto px-3 sm:px-2 sm:px-6 py-8" style={{ overflowX: "hidden" }}>
         
         {view === 'write' && (
           <div>
@@ -1854,7 +1856,7 @@ export default function MyUnfolding() {
                     placeholder="What's true right now?"
                     className="w-full h-72 p-6 resize-none focus:outline-none text-lg leading-relaxed"
                     style={{ color: BRAND.charcoal }} />
-                  <div className="flex items-center justify-between px-6 py-4 border-t"
+                  <div className="flex items-center justify-between px-2 sm:px-6 py-4 border-t"
                     style={{ backgroundColor: BRAND.cream, borderColor: BRAND.lightGray }}>
                     <div className="flex items-center gap-2">
                       <button 
@@ -2335,7 +2337,7 @@ export default function MyUnfolding() {
                     : 'Ready to see what\'s emerging?'}
                 </p>
                 <button onClick={analyzePatterns} disabled={filterEntriesByTime(entries, patternTimeFilter).length < 3}
-                  className="px-6 py-3 rounded-lg text-white disabled:opacity-30"
+                  className="px-2 sm:px-6 py-3 rounded-lg text-white disabled:opacity-30"
                   style={{ backgroundColor: BRAND.charcoal }}>Analyze</button>
               </div>
             )}
@@ -2658,7 +2660,7 @@ export default function MyUnfolding() {
       <InstallAppPrompt />
       </main>
 
-      <footer className="max-w-3xl mx-auto px-6 py-8 text-center">
+      <footer className="max-w-3xl mx-auto px-2 sm:px-6 py-8 text-center">
         <p className="text-xs" style={{ color: BRAND.lightGray }}>The Unfolding © {new Date().getFullYear()}</p>
       </footer>
     </div>
