@@ -1606,7 +1606,7 @@ export default function MyUnfolding() {
 
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: BRAND.cream }}>
+    <div className="min-h-screen" style={{ whiteSpace: "nowrap", flexShrink: 0, backgroundColor: BRAND.cream }}>
       <Confetti active={showConfetti} />
       
       {showCelebration && (
@@ -1756,7 +1756,7 @@ export default function MyUnfolding() {
               <VesselLogo size={28} color={BRAND.charcoal} />
               <h1 className="text-xl font-light italic" style={{ color: BRAND.charcoal }}>My Unfolding</h1>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 overflow-x-auto" style={{ WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}>
               <button onClick={() => setShowFeedback(true)} className="text-xs px-3 py-1 rounded-full"
                 style={{ backgroundColor: BRAND.cream, color: BRAND.warmGray }}>Feedback</button>
               <button onClick={() => setView('settings')} className="text-sm" style={{ color: BRAND.warmGray }}>⚙</button>
