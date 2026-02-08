@@ -665,7 +665,7 @@ const InstallAppPrompt = () => {
             <div style={{ textAlign: 'center', marginBottom: '20px' }}>
               <svg width="36" height="44" viewBox="0 0 60 75" fill="none" style={{ marginBottom: '12px' }}><path d="M6 6 L6 48 Q6 69, 30 69 Q54 69, 54 48 L54 6" stroke={BRAND.charcoal} strokeWidth="5" strokeLinecap="round" fill="none"/><circle cx="30" cy="52" r="5" fill={BRAND.charcoal}/></svg>
               <h3 style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: '22px', fontWeight: '400', color: BRAND.charcoal, margin: '0 0 6px' }}>Add My Unfolding to your home screen</h3>
-              <p style={{ fontSize: '14px', color: BRAND.warmGray, margin: 0, lineHeight: '1.5' }}>Access your journal instantly \u2014 no browser needed</p>
+              <p style={{ fontSize: '14px', color: BRAND.warmGray, margin: 0, lineHeight: '1.5' }}>Access your journal instantly - no browser needed</p>
             </div>
             {deferredPrompt && (<button onClick={handleNativeInstall} style={{ width: '100%', padding: '14px', backgroundColor: BRAND.charcoal, color: BRAND.cream, border: 'none', borderRadius: '12px', fontSize: '16px', fontWeight: '500', cursor: 'pointer', marginBottom: '16px' }}>Install App</button>)}
             {isIOS && !deferredPrompt && (
