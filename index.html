@@ -18,7 +18,23 @@
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
     <!-- Register Service Worker -->
+    
     <script>
+      // Force clear old service worker caches (one-time bust)
+      (async function() {
+        if ('serviceWorker' in navigator) {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          for (const reg of regs) {
+            await reg.unregister();
+          }
+          const keys = await caches.keys();
+          for (const key of keys) {
+            await caches.delete(key);
+          }
+        }
+      })();
+    </script>
+<script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('/sw.js');
