@@ -1616,7 +1616,7 @@ export default function MyUnfolding() {
 
 
   return (
-    <div className="min-h-screen" style={{ fontSize: "0.7rem", padding: "6px 2px", whiteSpace: "nowrap", whiteSpace: "nowrap", flexShrink: 0, fontSize: "13px", padding: "8px 6px", fontSize: "0.8rem", backgroundColor: BRAND.cream }}>
+    <div className="min-h-screen" style={{ backgroundColor: BRAND.cream }}>
       <Confetti active={showConfetti} />
       
       {showCelebration && (
@@ -1759,16 +1759,15 @@ export default function MyUnfolding() {
         </div>
       )}
 
-      <header className="bg-white border-b sticky top-0 z-40" style={{ maxWidth: "100vw", overflowX: "hidden" }} style={{ borderColor: BRAND.lightGray }}>
+      <header className="bg-white border-b sticky top-0 z-40" style={{ maxWidth: "100vw", overflowX: "hidden", borderColor: BRAND.lightGray }}>
         <div className="mx-auto py-4" style={{ maxWidth: "100%", padding: "16px 8px", boxSizing: "border-box" }}>
           <div className="flex items-center justify-between mb-4" style={{ maxWidth: "100%", overflow: "hidden" }}>
             <div className="flex items-center" style={{ gap: "4px" }}>
               <VesselLogo size={28} color={BRAND.charcoal} />
-              <h1 className="font-light italic" style={{ fontSize: "1rem" }} style={{ color: BRAND.charcoal }}>My Unfolding</h1>
+              <h1 className="font-light italic" style={{ fontSize: "1rem", color: BRAND.charcoal }}>My Unfolding</h1>
             </div>
-            <div className="flex items-center justify-between" style={{ width: "100%", maxWidth: "100%", fontSize: "0.7rem", gap: "0px" }}>
-              <button onClick={() => setShowFeedback(true)} className="text-xs py-1 rounded-full" style={{ padding: "4px 6px", fontSize: "0.65rem" }}
-                style={{ backgroundColor: BRAND.cream, color: BRAND.warmGray }}>Feedback</button>
+            <div className="flex items-center" style={{ gap: "8px" }}>
+              <button onClick={() => setShowFeedback(true)} className="text-xs py-1 rounded-full" style={{ padding: "4px 6px", fontSize: "0.65rem", backgroundColor: BRAND.cream, color: BRAND.warmGray }}>Feedback</button>
               <button onClick={() => setView('settings')} className="text-xl" style={{ color: BRAND.warmGray }}>⚙</button>
             </div>
           </div>
