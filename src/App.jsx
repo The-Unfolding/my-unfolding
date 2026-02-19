@@ -135,19 +135,11 @@ const Confetti = ({ active }) => {
   );
 };
 
-// Vessel Logo Component
+// Vessel Logo Component — thin U in outlined circle
 const VesselLogo = ({ size = 40, color = BRAND.charcoal }) => (
-  <svg width={size} height={size * 1.2} viewBox="0 0 40 48">
-    <path
-      d="M8 4 L8 28 Q8 40 20 40 Q32 40 32 28 L32 4"
-      fill="none"
-      stroke={color}
-      strokeWidth="2.5"
-      strokeLinecap="round"
-    />
-    <circle cx="20" cy="24" r="3" fill={color} />
-    <circle cx="20" cy="24" r="8" fill="none" stroke={color} strokeWidth="1" opacity="0.3" />
-    <circle cx="20" cy="24" r="14" fill="none" stroke={color} strokeWidth="0.75" opacity="0.15" />
+  <svg width={size} height={size} viewBox="0 0 40 40">
+    <circle cx="20" cy="20" r="18.5" fill="none" stroke={color} strokeWidth="1.5" />
+    <path d="M13 11 L13 23 Q13 30, 20 30 Q27 30, 27 23 L27 11" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
 
@@ -711,14 +703,14 @@ const InstallAppPrompt = () => {
 
 export default function MyUnfolding() {
   // Auth state
-  const [authView, setAuthView] = useState('loading'); // loading, signin, signup, choosePlan, payment, welcome, onboarding1, onboarding2, app, accessEnded
+  const [authView, setAuthView] = useState('loading');
   const [user, setUser] = useState(null);
-  const [accessType, setAccessType] = useState(null); // 'coaching', 'paid', 'none'
+  const [accessType, setAccessType] = useState(null);
   const [authError, setAuthError] = useState('');
   const [isAuthLoading, setIsAuthLoading] = useState(false);
   const [isValidatingCode, setIsValidatingCode] = useState(false);
   const [codeError, setCodeError] = useState('');
-  const [pendingSignup, setPendingSignup] = useState(null); // Store signup data while validating code
+  const [pendingSignup, setPendingSignup] = useState(null);
   
   // Original app state
   const [hasConsented, setHasConsented] = useState(false);
@@ -780,7 +772,6 @@ export default function MyUnfolding() {
         setAccessType(authData.accessType);
         setAuthView('app');
       } else if (authData.user && authData.accessType === 'none') {
-        // User exists but no access - show choose plan
         setUser(authData.user);
         setAuthView('choosePlan');
       } else {
@@ -793,8 +784,6 @@ export default function MyUnfolding() {
 
   // Auth handlers
   const handleSignUp = async (email, password) => {
-    // Just store credentials and go to choose plan
-    // Account is created when they enter invite code or pay
     if (!email || !password) {
       setAuthError('Email and password required');
       return;
@@ -897,7 +886,6 @@ export default function MyUnfolding() {
   };
   
   const handleSelectPlan = (plan) => {
-    // For now, just show a message - Stripe integration comes later
     alert(`Stripe payment for ${plan} plan coming soon! For now, use an invite code.`);
   };
   
@@ -905,7 +893,6 @@ export default function MyUnfolding() {
     setHasConsented(true);
     setAuthView('app');
   };
-
 
   // Check for Web Speech API support
   useEffect(() => {
@@ -922,7 +909,6 @@ export default function MyUnfolding() {
       setIntentions(data.intentions || []);
       setCompletedIntentions(data.completedIntentions || []);
       setHasConsented(data.hasConsented || false);
-      // Don't set showWelcome here - auth flow handles onboarding now
     }
   }, []);
 
@@ -1076,7 +1062,6 @@ export default function MyUnfolding() {
     setIsGuidedReflection(true);
     setIsWrappingUp(false);
     
-    // Brief expectation-setting + context-aware prompt
     let openingMessage = "This is prompted journaling — I'll help you dig into what's happening and what's underneath. Your words become a journal entry.\n\nWhat's present for you right now?";
     
     if (currentPrompt) {
@@ -1154,12 +1139,10 @@ export default function MyUnfolding() {
     const newEntries = [newEntry, ...entries];
     setEntries(newEntries);
     
-    // Store the text and show reflection offer
     setSavedReflectionText(entryText);
     setShowReflectionOffer(true);
     setReflectionInsight('');
     
-    // Reset guided reflection state but keep phase for context
     setIsGuidedReflection(false);
     setIsWrappingUp(false);
     setGuidedMessages([]);
@@ -1198,7 +1181,6 @@ export default function MyUnfolding() {
     setCurrentPrompt(null);
     setReflectOnIntentions(false);
     
-    // Show affirmation
     setAffirmation(AFFIRMATIONS[Math.floor(Math.random() * AFFIRMATIONS.length)]);
     setShowAffirmation(true);
     setTimeout(() => setShowAffirmation(false), 2500);
@@ -1269,7 +1251,6 @@ export default function MyUnfolding() {
     }
   };
   
-  // Transcribe handwritten journal from image - server handles HEIC conversion
   const handleImageUpload = async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -1277,16 +1258,13 @@ export default function MyUnfolding() {
     setIsTranscribing(true);
     
     try {
-      // Get file type
       let mediaType = file.type.toLowerCase();
       const fileName = file.name.toLowerCase();
       
-      // Detect HEIC even if browser doesn't report correct type
       if (fileName.endsWith('.heic') || fileName.endsWith('.heif')) {
         mediaType = 'image/heic';
       }
       
-      // Convert to base64
       const base64 = await new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(reader.result.split(',')[1]);
@@ -1321,7 +1299,6 @@ export default function MyUnfolding() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  // Voice recording - FIXED: Uses Web Speech API (works in browser, no API needed)
   const startRecording = () => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
@@ -1346,7 +1323,6 @@ export default function MyUnfolding() {
           interimTranscript += transcript;
         }
       }
-      // Update entry with final + interim (interim shows what's being said)
       setCurrentEntry(prev => {
         const base = prev.replace(/\[listening...\].*$/, '').trim();
         const newText = finalTranscript + (interimTranscript ? `[listening...] ${interimTranscript}` : '');
@@ -1363,7 +1339,6 @@ export default function MyUnfolding() {
     };
 
     recognition.onend = () => {
-      // Clean up interim text when done
       setCurrentEntry(prev => prev.replace(/\[listening...\].*$/, '').trim());
       setIsRecording(false);
     };
@@ -1381,7 +1356,6 @@ export default function MyUnfolding() {
     setIsRecording(false);
   };
 
-  // Simple markdown renderer for chat
   const renderMarkdown = (text) => {
     if (!text) return null;
     
@@ -1433,7 +1407,6 @@ export default function MyUnfolding() {
     return elements;
   };
 
-  // Chat with your journal - FIXED: Uses API route
   const sendChatMessage = async () => {
     if (!chatInput.trim() || entries.length === 0) return;
     
@@ -1494,7 +1467,6 @@ export default function MyUnfolding() {
     return entries.filter(e => new Date(e.date) >= cutoff);
   };
 
-  // Analyze patterns - FIXED: Uses API route
   const analyzePatterns = async () => {
     const filteredEntries = filterEntriesByTime(entries, patternTimeFilter);
     if (filteredEntries.length < 3) {
@@ -1534,7 +1506,6 @@ export default function MyUnfolding() {
     setIsAnalyzing(false);
   };
 
-  // Submit feedback - FIXED: Uses Resend API route
   const submitFeedback = async () => {
     if (!feedbackText.trim()) return;
     
