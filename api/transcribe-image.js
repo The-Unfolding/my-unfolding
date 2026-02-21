@@ -43,43 +43,25 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         model: "claude-sonnet-4-20250514",
         max_tokens: 3000,
-        messages: [{
-          role: "user",
-          content: [
-            {
-              type: "image",
-              source: {
-                type: "base64",
-                media_type: processedMediaType,
-                data: processedImage
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "image",
+                source: {
+                  type: "base64",
+                  media_type: processedMediaType,
+                  data: processedImage
+                }
+              },
+              {
+                type: "text",
+                text: "Carefully transcribe the handwritten text in this image. Read each word exactly as written. Do not make up or invent any words — only write what you can actually see. If you cannot read a word, write [unclear]. This is a personal journal entry."
               }
-            },
-            {
-              type: "text",
-              text: `This is a photo of a handwritten journal entry. Transcribe it into clean, readable text.
-
-This is a personal journal — the content will be about feelings, experiences, relationships, self-reflection, goals, or daily life. Use that context to interpret unclear words.
-
-Common cursive misreads to watch for:
-- The pronoun "I" often looks like "cl", "el", "d", or "J" in cursive — if a standalone letter or pair before a verb (am, feel, want, need, have, don't, was, will, can, think, know) doesn't make sense, it's probably "I"
-- "th" can look like "tu" or "tl"
-- "m" and "w" look similar
-- "n" and "u" look similar
-- "a" and "o" look similar
-- "e" and "i" look similar
-- Double letters may look like single letters or vice versa
-
-Instructions:
-1. Read the full page first to understand the topic
-2. Re-read line by line and transcribe each word
-3. Always choose the word that makes grammatical and contextual sense
-4. Add proper punctuation and capitalization for readability
-5. Preserve paragraph breaks
-6. Mark genuinely unclear words with [?]
-7. Output ONLY the transcribed text`
-            }
-          ]
-        }]
+            ]
+          }
+        ]
       })
     });
 
