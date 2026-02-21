@@ -315,7 +315,7 @@ const SignUpScreen = ({ onSignUp, onSwitchToSignIn, isLoading, error }) => {
   );
 };
 
-const SignInScreen = ({ onSignIn, onSwitchToSignUp, isLoading, error }) => {
+const SignInScreen = ({ onSignIn, onSwitchToSignUp, onForgotPassword, isLoading, error, resetSent }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   
@@ -346,7 +346,7 @@ const SignInScreen = ({ onSignIn, onSwitchToSignUp, isLoading, error }) => {
             />
           </div>
           
-          <div className="mb-6">
+          <div className="mb-2">
             <label className="block text-sm font-medium mb-1" style={{ color: BRAND.charcoal }}>Password</label>
             <input 
               type="password" 
@@ -359,8 +359,18 @@ const SignInScreen = ({ onSignIn, onSwitchToSignUp, isLoading, error }) => {
             />
           </div>
           
+          <div className="mb-6 text-right">
+            <button type="button" onClick={() => onForgotPassword(email)} className="text-xs" style={{ color: BRAND.warmGray }}>
+              Forgot password?
+            </button>
+          </div>
+
           {error && (
             <p className="text-red-500 text-sm mb-4">{error}</p>
+          )}
+
+          {resetSent && (
+            <p className="text-green-600 text-sm mb-4">Reset link sent! Check your email.</p>
           )}
           
           <button 
@@ -804,6 +814,7 @@ export default function MyUnfolding() {
   const [isValidatingCode, setIsValidatingCode] = useState(false);
   const [codeError, setCodeError] = useState('');
   const [pendingSignup, setPendingSignup] = useState(null);
+  const [resetSent, setResetSent] = useState(false);
   
   // Original app state
   const [hasConsented, setHasConsented] = useState(false);
@@ -1033,6 +1044,41 @@ export default function MyUnfolding() {
   const handleSelectPlan = (plan) => {
     alert(`Stripe payment for ${plan} plan coming soon! For now, use an invite code.`);
   };
+
+  const handleForgotPassword = async (email) => {
+    if (!email) {
+      setAuthError('Enter your email first, then click Forgot password');
+      return;
+    }
+    try {
+      const res = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      if (res.ok) {
+        setResetSent(true);
+        setAuthError('');
+        setTimeout(() => setResetSent(false), 5000);
+      } else {
+        setAuthError('Could not send reset email. Try again.');
+      }
+    } catch {
+      setAuthError('Network error. Please try again.');
+    }
+  };
+
+  const handleSignOut = () => {
+    localStorage.removeItem('myUnfoldingAuth');
+    setUser(null);
+    setAccessType(null);
+    setEntries([]);
+    setIntentions([]);
+    setCompletedIntentions([]);
+    setPatterns(null);
+    setHasConsented(false);
+    setAuthView('signin');
+  };
   
   const handleOnboardingComplete = () => {
     setHasConsented(true);
@@ -1061,9 +1107,11 @@ export default function MyUnfolding() {
     return (
       <SignInScreen 
         onSignIn={handleSignIn}
-        onSwitchToSignUp={() => { setAuthView('signup'); setAuthError(''); }}
+        onSwitchToSignUp={() => { setAuthView('signup'); setAuthError(''); setResetSent(false); }}
+        onForgotPassword={handleForgotPassword}
         isLoading={isAuthLoading}
         error={authError}
+        resetSent={resetSent}
       />
     );
   }
@@ -1421,7 +1469,24 @@ export default function MyUnfolding() {
       
       const base64 = await new Promise((resolve, reject) => {
         const reader = new FileReader();
-        reader.onload = () => resolve(reader.result.split(',')[1]);
+        reader.onload = () => {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const maxSize = 1500;
+            let w = img.width, h = img.height;
+            if (w > maxSize || h > maxSize) {
+              if (w > h) { h = Math.round(h * maxSize / w); w = maxSize; }
+              else { w = Math.round(w * maxSize / h); h = maxSize; }
+            }
+            canvas.width = w;
+            canvas.height = h;
+            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+            resolve(canvas.toDataURL('image/jpeg', 0.85).split(',')[1]);
+          };
+          img.onerror = reject;
+          img.src = reader.result;
+        };
         reader.onerror = reject;
         reader.readAsDataURL(file);
       });
@@ -2726,6 +2791,18 @@ export default function MyUnfolding() {
             <button onClick={() => setView('write')} className="text-sm mb-6" style={{ color: BRAND.warmGray }}>← Back</button>
             <h2 className="text-xl font-light italic mb-6" style={{ color: BRAND.charcoal }}>Settings</h2>
             
+            <div className="bg-white rounded-xl border p-5 mb-6" style={{ borderColor: BRAND.lightGray }}>
+              <h3 className="font-medium mb-3" style={{ color: BRAND.charcoal }}>Account</h3>
+              <p className="text-sm mb-4" style={{ color: BRAND.warmGray }}>
+                Signed in as {user?.email}
+              </p>
+              <button onClick={handleSignOut}
+                className="px-4 py-2 rounded-lg text-sm"
+                style={{ backgroundColor: BRAND.cream, color: BRAND.charcoal, border: `1px solid ${BRAND.lightGray}` }}>
+                Sign out
+              </button>
+            </div>
+
             <div className="bg-white rounded-xl border p-5 mb-6" style={{ borderColor: BRAND.lightGray }}>
               <h3 className="font-medium mb-3" style={{ color: BRAND.charcoal }}>📅 Schedule Your Reflection</h3>
               <p className="text-sm mb-4" style={{ color: BRAND.warmGray }}>
