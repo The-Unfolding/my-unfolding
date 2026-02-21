@@ -1467,9 +1467,16 @@ export default function MyUnfolding() {
         mediaType = 'image/heic';
       }
       
+      const isHeic = file.name?.toLowerCase().endsWith('.heic') || file.name?.toLowerCase().endsWith('.heif') || mediaType === 'image/heic';
+      
       const base64 = await new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => {
+          if (isHeic) {
+            // Browser can't render HEIC — send raw, server will convert
+            resolve(reader.result.split(',')[1]);
+            return;
+          }
           const img = new Image();
           img.onload = () => {
             const canvas = document.createElement('canvas');
@@ -1484,7 +1491,10 @@ export default function MyUnfolding() {
             canvas.getContext('2d').drawImage(img, 0, 0, w, h);
             resolve(canvas.toDataURL('image/jpeg', 0.95).split(',')[1]);
           };
-          img.onerror = reject;
+          img.onerror = () => {
+            // Fallback: send raw if Image can't load it
+            resolve(reader.result.split(',')[1]);
+          };
           img.src = reader.result;
         };
         reader.onerror = reject;
