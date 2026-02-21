@@ -54,7 +54,7 @@ export default async function handler(req, res) {
         "anthropic-version": "2023-06-01"
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
+        model: "claude-opus-4-0-20250115",
         max_tokens: 2000,
         messages: [{
           role: "user",
@@ -69,7 +69,7 @@ export default async function handler(req, res) {
             },
             {
               type: "text",
-              text: "You are an OCR tool. Output ONLY the raw text visible in this image. Do not add any commentary, interpretation, corrections, or formatting. Do not fix spelling or grammar. Do not summarize. Just output the exact characters and words you see, preserving line breaks. Nothing else."
+              text: "This is a photo of handwritten text, likely in cursive or script. Please transcribe it into clean, readable text. Use context to interpret ambiguous letters — cursive letters like a/o, e/i, n/u, r/v often look similar. When a word is genuinely unclear even with context, write your best guess followed by [?] so the writer can verify. Preserve paragraph breaks and the natural flow of thought. Output only the transcribed text with no commentary."
             }
           ]
         }]
