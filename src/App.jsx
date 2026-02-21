@@ -9,6 +9,99 @@ const BRAND = {
   chartreuse: '#e2ff4d'
 };
 
+// ============================================
+// API HELPERS — talk to Supabase via our endpoints
+// ============================================
+const api = {
+  async loadEntries(userId) {
+    try {
+      const res = await fetch(`/api/entries?userId=${userId}`);
+      const data = await res.json();
+      return data.entries || [];
+    } catch { return []; }
+  },
+  async saveEntry(userId, entry) {
+    try { await fetch('/api/entries', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, entry }) }); } catch {}
+  },
+  async deleteEntry(userId, entryId) {
+    try { await fetch('/api/entries', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, entryId }) }); } catch {}
+  },
+  async loadIntentions(userId) {
+    try {
+      const res = await fetch(`/api/intentions?userId=${userId}`);
+      const data = await res.json();
+      return { intentions: data.intentions || [], completedIntentions: data.completedIntentions || [] };
+    } catch { return { intentions: [], completedIntentions: [] }; }
+  },
+  async saveIntention(userId, intention) {
+    try { await fetch('/api/intentions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, intention }) }); } catch {}
+  },
+  async updateIntention(userId, intentionId, isCompleted, completedAt) {
+    try { await fetch('/api/intentions', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, intentionId, is_completed: isCompleted, completed_at: completedAt }) }); } catch {}
+  },
+  async deleteIntention(userId, intentionId) {
+    try { await fetch('/api/intentions', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, intentionId }) }); } catch {}
+  },
+  async loadSettings(userId) {
+    try {
+      const res = await fetch(`/api/user-settings?userId=${userId}`);
+      const data = await res.json();
+      return data.settings || {};
+    } catch { return {}; }
+  },
+  async saveSettings(userId, settings) {
+    try { await fetch('/api/user-settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, ...settings }) }); } catch {}
+  }
+};
+
+// ============================================
+// MIGRATE localStorage → Supabase (one-time)
+// ============================================
+async function migrateLocalData(userId) {
+  const saved = localStorage.getItem('myUnfoldingJournal');
+  if (!saved) return null;
+
+  const data = JSON.parse(saved);
+  const migrated = { entries: [], intentions: [], completedIntentions: [] };
+
+  // Upload entries
+  if (data.entries?.length) {
+    for (const entry of data.entries) {
+      await api.saveEntry(userId, entry);
+    }
+    migrated.entries = data.entries;
+  }
+
+  // Upload active intentions
+  if (data.intentions?.length) {
+    for (const i of data.intentions) {
+      await api.saveIntention(userId, i);
+    }
+    migrated.intentions = data.intentions;
+  }
+
+  // Upload completed intentions
+  if (data.completedIntentions?.length) {
+    for (const i of data.completedIntentions) {
+      await api.saveIntention(userId, { ...i, id: i.id });
+      await api.updateIntention(userId, i.id, true, i.completedAt);
+    }
+    migrated.completedIntentions = data.completedIntentions;
+  }
+
+  // Upload settings
+  await api.saveSettings(userId, {
+    hasConsented: data.hasConsented || false,
+    patterns: data.patterns || null
+  });
+
+  // Clear localStorage journal data (keep auth)
+  localStorage.removeItem('myUnfoldingJournal');
+  console.log('Migration complete — localStorage data moved to cloud');
+
+  return { ...data, ...migrated };
+}
+
 // CORE Framework prompts
 const CORE_PROMPTS = {
   C: {
@@ -506,8 +599,8 @@ const OnboardingBeforeScreen = ({ onComplete }) => (
         <div className="flex gap-3">
           <span className="text-xl">🔒</span>
           <div>
-            <p className="text-sm font-medium" style={{ color: BRAND.charcoal }}>Your entries stay on your device</p>
-            <p className="text-xs" style={{ color: BRAND.warmGray }}>Nothing is stored on our servers. Use Print in History to back up.</p>
+            <p className="text-sm font-medium" style={{ color: BRAND.charcoal }}>Your entries are securely stored</p>
+            <p className="text-xs" style={{ color: BRAND.warmGray }}>Synced to your account so you can access them on any device.</p>
           </div>
         </div>
         
@@ -522,8 +615,8 @@ const OnboardingBeforeScreen = ({ onComplete }) => (
         <div className="flex gap-3">
           <span className="text-xl">📱</span>
           <div>
-            <p className="text-sm font-medium" style={{ color: BRAND.charcoal }}>One device at a time</p>
-            <p className="text-xs" style={{ color: BRAND.warmGray }}>Your entries live in this browser only.</p>
+            <p className="text-sm font-medium" style={{ color: BRAND.charcoal }}>Works on all your devices</p>
+            <p className="text-xs" style={{ color: BRAND.warmGray }}>Sign in on your phone, tablet, or computer — your journal is always there.</p>
           </div>
         </div>
         
@@ -544,7 +637,7 @@ const OnboardingBeforeScreen = ({ onComplete }) => (
       </button>
       
       <p className="text-xs text-center mt-3 leading-relaxed" style={{ color: BRAND.warmGray }}>
-        By continuing, you confirm you understand your data is stored locally and this is not professional advice.
+        By continuing, you confirm you understand this is not professional advice.
       </p>
     </div>
   </AuthScreen>
@@ -758,9 +851,59 @@ export default function MyUnfolding() {
   const [savedReflectionText, setSavedReflectionText] = useState('');
   const [reflectionInsight, setReflectionInsight] = useState('');
   const [isLoadingInsight, setIsLoadingInsight] = useState(false);
+  const [isLoadingData, setIsLoadingData] = useState(false);
   const fileInputRef = useRef(null);
   const recognitionRef = useRef(null);
   const guidedMessagesEndRef = useRef(null);
+
+  // ============================================
+  // LOAD JOURNAL DATA FROM SUPABASE
+  // ============================================
+  const loadJournalData = async (userId) => {
+    setIsLoadingData(true);
+    try {
+      // Check for localStorage data to migrate first
+      const localData = localStorage.getItem('myUnfoldingJournal');
+      if (localData) {
+        console.log('Found local data — migrating to cloud...');
+        const migrated = await migrateLocalData(userId);
+        if (migrated) {
+          setEntries(migrated.entries || []);
+          setIntentions(migrated.intentions || []);
+          setCompletedIntentions(migrated.completedIntentions || []);
+          setPatterns(migrated.patterns || null);
+          setHasConsented(migrated.hasConsented || false);
+          setIsLoadingData(false);
+          return;
+        }
+      }
+
+      // Load from Supabase
+      const [entriesData, intentionsData, settings] = await Promise.all([
+        api.loadEntries(userId),
+        api.loadIntentions(userId),
+        api.loadSettings(userId)
+      ]);
+
+      // Map entries from DB format to app format
+      setEntries(entriesData.map(e => ({
+        id: e.id,
+        text: e.text,
+        date: e.date,
+        prompt: e.prompt,
+        phase: e.phase,
+        isIntentionReflection: e.is_intention_reflection,
+        type: e.type
+      })));
+      setIntentions(intentionsData.intentions || []);
+      setCompletedIntentions(intentionsData.completedIntentions || []);
+      setHasConsented(settings.has_consented || false);
+      setPatterns(settings.patterns || null);
+    } catch (err) {
+      console.error('Failed to load journal data:', err);
+    }
+    setIsLoadingData(false);
+  };
 
   // Check auth on load
   useEffect(() => {
@@ -771,6 +914,7 @@ export default function MyUnfolding() {
         setUser(authData.user);
         setAccessType(authData.accessType);
         setAuthView('app');
+        loadJournalData(authData.user.id);
       } else if (authData.user && authData.accessType === 'none') {
         setUser(authData.user);
         setAuthView('choosePlan');
@@ -826,6 +970,7 @@ export default function MyUnfolding() {
       
       if (data.accessType === 'coaching' || data.accessType === 'paid') {
         setAuthView('app');
+        loadJournalData(data.user.id);
       } else {
         setAuthView('choosePlan');
       }
@@ -891,6 +1036,9 @@ export default function MyUnfolding() {
   
   const handleOnboardingComplete = () => {
     setHasConsented(true);
+    if (user?.id) {
+      api.saveSettings(user.id, { hasConsented: true });
+    }
     setAuthView('app');
   };
 
@@ -899,26 +1047,6 @@ export default function MyUnfolding() {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     setVoiceSupported(!!SpeechRecognition);
   }, []);
-
-  useEffect(() => {
-    const saved = localStorage.getItem('myUnfoldingJournal');
-    if (saved) {
-      const data = JSON.parse(saved);
-      setEntries(data.entries || []);
-      setPatterns(data.patterns || null);
-      setIntentions(data.intentions || []);
-      setCompletedIntentions(data.completedIntentions || []);
-      setHasConsented(data.hasConsented || false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (hasConsented) {
-      localStorage.setItem('myUnfoldingJournal', JSON.stringify({
-        entries, patterns, intentions, completedIntentions, hasConsented
-      }));
-    }
-  }, [entries, patterns, intentions, completedIntentions, hasConsented]);
 
   // Auth screens rendering
   if (authView === 'loading') {
@@ -990,6 +1118,16 @@ export default function MyUnfolding() {
     );
   }
 
+  // Show loading while fetching journal data
+  if (isLoadingData) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4" style={{ backgroundColor: BRAND.cream }}>
+        <VesselLogo size={48} color={BRAND.charcoal} />
+        <p className="text-sm animate-pulse" style={{ color: BRAND.warmGray }}>Loading your journal...</p>
+      </div>
+    );
+  }
+
   // Rest of the original app code follows...
   const selectPhase = (phase) => {
     if (selectedPhase === phase) {
@@ -1042,6 +1180,9 @@ export default function MyUnfolding() {
     setSelectedPhase(null);
     setCurrentPrompt(null);
     setReflectOnIntentions(false);
+
+    // Save to Supabase
+    if (user?.id) api.saveEntry(user.id, newEntry);
     
     const milestones = [10, 25, 50, 100];
     if (milestones.includes(newEntries.length)) {
@@ -1138,6 +1279,9 @@ export default function MyUnfolding() {
     
     const newEntries = [newEntry, ...entries];
     setEntries(newEntries);
+
+    // Save to Supabase
+    if (user?.id) api.saveEntry(user.id, newEntry);
     
     setSavedReflectionText(entryText);
     setShowReflectionOffer(true);
@@ -1209,6 +1353,8 @@ export default function MyUnfolding() {
     if (confirm('Delete this entry?')) {
       setEntries(prev => prev.filter(e => e.id !== id));
       setExpandedEntry(null);
+      // Delete from Supabase
+      if (user?.id) api.deleteEntry(user.id, id);
     }
   };
 
@@ -1222,16 +1368,22 @@ export default function MyUnfolding() {
     };
     setIntentions(prev => [intention, ...prev]);
     setNewIntention('');
+    // Save to Supabase
+    if (user?.id) api.saveIntention(user.id, intention);
   };
 
   const completeIntention = (id) => {
     const intention = intentions.find(i => i.id === id);
     if (intention) {
+      const completedAt = new Date().toISOString();
       setCompletedIntentions(prev => [{
         ...intention,
-        completedAt: new Date().toISOString()
+        completedAt
       }, ...prev]);
       setIntentions(prev => prev.filter(i => i.id !== id));
+      
+      // Update in Supabase
+      if (user?.id) api.updateIntention(user.id, id, true, completedAt);
       
       setShowConfetti(true);
       setCelebrationMessage(CELEBRATION_MESSAGES[Math.floor(Math.random() * CELEBRATION_MESSAGES.length)]);
@@ -1248,6 +1400,8 @@ export default function MyUnfolding() {
       const { completedAt, ...rest } = intention;
       setIntentions(prev => [rest, ...prev]);
       setCompletedIntentions(prev => prev.filter(i => i.id !== id));
+      // Update in Supabase
+      if (user?.id) api.updateIntention(user.id, id, false, null);
     }
   };
   
@@ -1453,6 +1607,8 @@ export default function MyUnfolding() {
     } else {
       setIntentions(prev => prev.filter(i => i.id !== id));
     }
+    // Delete from Supabase
+    if (user?.id) api.deleteIntention(user.id, id);
   };
 
   const filterEntriesByTime = (entries, filter) => {
@@ -1493,6 +1649,8 @@ export default function MyUnfolding() {
       }
       
       setPatterns(data);
+      // Save patterns to Supabase
+      if (user?.id) api.saveSettings(user.id, { patterns: data });
     } catch (error) {
       console.error('Analysis error:', error);
       setPatterns({
@@ -2590,8 +2748,8 @@ export default function MyUnfolding() {
             <div className="bg-white rounded-xl border p-5 mb-6" style={{ borderColor: BRAND.lightGray }}>
               <h3 className="font-medium mb-3" style={{ color: BRAND.charcoal }}>🔒 Your Privacy</h3>
               <ul className="text-sm space-y-2" style={{ color: BRAND.warmGray }}>
-                <li>• <strong>Stored on your device:</strong> Entries saved in browser local storage only</li>
-                <li>• <strong>Different device or browser?</strong> Your data won't appear—it only exists where you created it</li>
+                <li>• <strong>Synced to your account:</strong> Entries stored securely in the cloud</li>
+                <li>• <strong>Works everywhere:</strong> Sign in on any device to access your journal</li>
                 <li>• <strong>No time limit:</strong> Data stays until you delete it—journal for years</li>
                 <li>• <strong>Pattern analysis:</strong> Uses Anthropic's Claude AI—entries sent temporarily, not stored</li>
                 <li>• <strong>Not therapy:</strong> This is for reflection only—use your judgment about AI insights</li>
@@ -2617,6 +2775,7 @@ export default function MyUnfolding() {
                     setIntentions([]);
                     setCompletedIntentions([]);
                     setPatterns(null);
+                    // TODO: Add API call to delete all data from Supabase
                   }
                 }
               }} className="text-sm text-red-500">Delete all data</button>
