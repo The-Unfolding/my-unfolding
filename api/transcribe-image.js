@@ -1,35 +1,23 @@
 // /api/transcribe-image.js - Transcribe handwritten journal from image
-// Uses pure JS heic-decode for Vercel compatibility
-
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
-
   const { image, mediaType } = req.body;
-
   if (!image) {
     return res.status(400).json({ error: 'Image required' });
   }
-
   try {
     let processedImage = image;
     let processedMediaType = mediaType;
     
-    // Convert HEIC to JPEG server-side using pure JS libraries
     if (mediaType === 'image/heic' || mediaType === 'image/heif') {
       try {
         const heicDecode = (await import('heic-decode')).default;
         const { encode } = await import('jpeg-js');
-        
         const inputBuffer = Buffer.from(image, 'base64');
-        
-        // Decode HEIC
         const { width, height, data } = await heicDecode({ buffer: inputBuffer });
-        
-        // Encode as JPEG
         const jpegData = encode({ width, height, data }, 90);
-        
         processedImage = jpegData.data.toString('base64');
         processedMediaType = 'image/jpeg';
       } catch (heicError) {
@@ -40,7 +28,6 @@ export default async function handler(req, res) {
       }
     }
     
-    // Validate media type
     const supportedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
     if (!supportedTypes.includes(processedMediaType)) {
       processedMediaType = 'image/jpeg';
@@ -55,7 +42,7 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: "claude-sonnet-4-20250514",
-        max_tokens: 2000,
+        max_tokens: 3000,
         messages: [{
           role: "user",
           content: [
@@ -69,7 +56,15 @@ export default async function handler(req, res) {
             },
             {
               type: "text",
-              text: "This is a photo of handwritten text, likely in cursive or script. Please transcribe it into clean, readable text. Use context to interpret ambiguous letters — cursive letters like a/o, e/i, n/u, r/v often look similar. When a word is genuinely unclear even with context, write your best guess followed by [?] so the writer can verify. Preserve paragraph breaks and the natural flow of thought. Output only the transcribed text with no commentary."
+              text: `Transcribe this handwritten journal entry. This is cursive/script handwriting.
+
+Rules:
+- Read carefully, line by line, left to right
+- Use surrounding words as context to figure out unclear letters
+- Cursive letters that look similar: a/o, e/i, n/u, r/v, m/w, h/k, l/t, c/e
+- If a word is still unclear after using context, write your best guess with [?] after it
+- Keep paragraph breaks where they naturally occur
+- Output ONLY the transcribed text, nothing else`
             }
           ]
         }]
@@ -77,15 +72,12 @@ export default async function handler(req, res) {
     });
 
     const data = await response.json();
-
     if (data.error) {
       console.error('Anthropic API error:', data.error);
       return res.status(500).json({ error: 'Transcription failed' });
     }
-
     const transcription = data.content?.[0]?.text || "";
     return res.status(200).json({ transcription });
-
   } catch (error) {
     console.error('Transcription error:', error);
     return res.status(500).json({ error: 'Transcription failed' });
