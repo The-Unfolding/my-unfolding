@@ -2236,7 +2236,12 @@ export default function MyUnfolding() {
                       )}
                     </div>
                     {expandedEntry === entry.id && (
-                      <div className="px-5 pb-4 flex justify-end">
+                      <div className="px-5 pb-4 flex justify-between">
+                        <button onClick={() => {
+                          const subject = encodeURIComponent(`My Unfolding — ${formatFullDate(entry.date)}`);
+                          const body = encodeURIComponent(`${entry.prompt ? `"${entry.prompt}"\n\n` : ''}${entry.text}\n\n— Written ${formatFullDate(entry.date)}`);
+                          window.open(`mailto:?subject=${subject}&body=${body}`);
+                        }} className="text-xs" style={{ color: BRAND.warmGray }}>✉ Email</button>
                         <button onClick={() => deleteEntry(entry.id)} className="text-xs text-red-500">Delete</button>
                       </div>
                     )}
@@ -2309,6 +2314,27 @@ export default function MyUnfolding() {
               <TimeFilter value={patternTimeFilter} onChange={setPatternTimeFilter} />
               <div className="flex gap-2">
                 {patterns?.data && patterns.timeFilter === patternTimeFilter && (
+                  <>
+                  <button
+                    onClick={() => {
+                      const o = patterns.data.overview || {};
+                      const subject = encodeURIComponent('My Unfolding — Pattern Analysis');
+                      const body = encodeURIComponent(
+                        `Pattern Analysis — ${patterns.entryCount} entries\n\n` +
+                        `WHAT I KEEP SAYING I WANT:\n${o.wanting || ''}\n\n` +
+                        `WHERE I'M WINNING:\n${o.winning || ''}\n\n` +
+                        `WHAT'S GETTING IN THE WAY:\n${o.blocking || ''}\n\n` +
+                        `WHAT I MIGHT BE READY FOR:\n${o.ready || ''}\n\n` +
+                        (o.question ? `A QUESTION TO SIT WITH:\n${o.question}\n\n` : '') +
+                        `— Generated ${formatDate(patterns.generatedAt)}`
+                      );
+                      window.open(`mailto:?subject=${subject}&body=${body}`);
+                    }}
+                    className="px-4 py-2 rounded-lg text-sm border"
+                    style={{ borderColor: BRAND.lightGray, color: BRAND.charcoal }}
+                  >
+                    ✉️ Email
+                  </button>
                   <button
                     onClick={() => {
                       const printWindow = window.open('', '_blank');
@@ -2377,6 +2403,7 @@ export default function MyUnfolding() {
                   >
                     🖨️ Print
                   </button>
+                  </>
                 )}
                 <button
                   onClick={analyzePatterns}
@@ -2622,6 +2649,11 @@ export default function MyUnfolding() {
                       ) : (
                         <div className="text-sm leading-relaxed" style={{ color: BRAND.charcoal }}>
                           {renderMarkdown(msg.content)}
+                          <button onClick={() => {
+                            const subject = encodeURIComponent('My Unfolding — Journal Insight');
+                            const body = encodeURIComponent(msg.content);
+                            window.open(`mailto:?subject=${subject}&body=${body}`);
+                          }} className="text-xs mt-2 block" style={{ color: BRAND.warmGray }}>✉ Email this</button>
                         </div>
                       )}
                     </div>
