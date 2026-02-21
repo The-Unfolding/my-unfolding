@@ -705,6 +705,105 @@ const AccessEndedScreen = ({ onSubscribe }) => (
   </AuthScreen>
 );
 
+const ResetPasswordScreen = ({ onReset, onBackToSignIn, isLoading, error, success }) => {
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [localError, setLocalError] = useState('');
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    setLocalError('');
+    if (password.length < 6) {
+      setLocalError('Password must be at least 6 characters');
+      return;
+    }
+    if (password !== confirmPassword) {
+      setLocalError('Passwords do not match');
+      return;
+    }
+    onReset(password);
+  };
+
+  if (success) {
+    return (
+      <AuthScreen>
+        <div className="bg-white rounded-2xl p-8 shadow-sm text-center">
+          <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
+            style={{ backgroundColor: BRAND.chartreuse }}>
+            <span className="text-2xl">✓</span>
+          </div>
+          <h1 className="text-xl font-medium mb-3" style={{ color: BRAND.charcoal }}>Password updated</h1>
+          <p className="text-sm mb-6" style={{ color: BRAND.warmGray }}>You can now sign in with your new password.</p>
+          <button onClick={onBackToSignIn}
+            className="w-full py-3 rounded-xl font-semibold"
+            style={{ backgroundColor: BRAND.chartreuse, color: BRAND.charcoal }}>
+            Sign In
+          </button>
+        </div>
+      </AuthScreen>
+    );
+  }
+
+  return (
+    <AuthScreen>
+      <div className="bg-white rounded-2xl p-8 shadow-sm">
+        <div className="text-center mb-8">
+          <VesselLogo size={40} color={BRAND.charcoal} />
+          <h1 className="text-xl font-medium mt-4" style={{ color: BRAND.charcoal }}>Set new password</h1>
+        </div>
+
+        <form onSubmit={handleSubmit}>
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-1" style={{ color: BRAND.charcoal }}>New password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="At least 6 characters"
+              className="w-full p-3 border rounded-lg text-base"
+              style={{ borderColor: BRAND.lightGray }}
+              required
+              minLength={6}
+            />
+          </div>
+
+          <div className="mb-6">
+            <label className="block text-sm font-medium mb-1" style={{ color: BRAND.charcoal }}>Confirm password</label>
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="Type it again"
+              className="w-full p-3 border rounded-lg text-base"
+              style={{ borderColor: BRAND.lightGray }}
+              required
+              minLength={6}
+            />
+          </div>
+
+          {(localError || error) && (
+            <p className="text-red-500 text-sm mb-4">{localError || error}</p>
+          )}
+
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full py-3 rounded-lg font-semibold transition-all disabled:opacity-50"
+            style={{ backgroundColor: BRAND.chartreuse, color: BRAND.charcoal }}>
+            {isLoading ? 'Updating...' : 'Update Password'}
+          </button>
+        </form>
+
+        <p className="text-center mt-6 text-sm" style={{ color: BRAND.warmGray }}>
+          <button onClick={onBackToSignIn} className="font-semibold" style={{ color: BRAND.charcoal }}>
+            ← Back to sign in
+          </button>
+        </p>
+      </div>
+    </AuthScreen>
+  );
+};
+
 
 
 // ============================================
@@ -815,6 +914,8 @@ export default function MyUnfolding() {
   const [codeError, setCodeError] = useState('');
   const [pendingSignup, setPendingSignup] = useState(null);
   const [resetSent, setResetSent] = useState(false);
+  const [resetToken, setResetToken] = useState(null);
+  const [resetSuccess, setResetSuccess] = useState(false);
   
   // Original app state
   const [hasConsented, setHasConsented] = useState(false);
@@ -916,8 +1017,22 @@ export default function MyUnfolding() {
     setIsLoadingData(false);
   };
 
-  // Check auth on load
+  // Check auth on load + detect password reset tokens
   useEffect(() => {
+    // Check for password reset token in URL
+    const hash = window.location.hash;
+    if (hash && hash.includes('type=recovery')) {
+      const params = new URLSearchParams(hash.substring(1));
+      const accessToken = params.get('access_token');
+      if (accessToken) {
+        setResetToken(accessToken);
+        setAuthView('resetPassword');
+        // Clean up URL
+        window.history.replaceState(null, '', window.location.pathname);
+        return;
+      }
+    }
+
     const savedAuth = localStorage.getItem('myUnfoldingAuth');
     if (savedAuth) {
       const authData = JSON.parse(savedAuth);
@@ -1079,6 +1194,27 @@ export default function MyUnfolding() {
     setHasConsented(false);
     setAuthView('signin');
   };
+
+  const handleResetPassword = async (newPassword) => {
+    setIsAuthLoading(true);
+    setAuthError('');
+    try {
+      const res = await fetch('/api/auth/update-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accessToken: resetToken, newPassword })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setAuthError(data.error || 'Could not update password. Try again.');
+      } else {
+        setResetSuccess(true);
+      }
+    } catch {
+      setAuthError('Network error. Please try again.');
+    }
+    setIsAuthLoading(false);
+  };
   
   const handleOnboardingComplete = () => {
     setHasConsented(true);
@@ -1163,6 +1299,18 @@ export default function MyUnfolding() {
   if (authView === 'accessEnded') {
     return (
       <AccessEndedScreen onSubscribe={() => setAuthView('choosePlan')} />
+    );
+  }
+
+  if (authView === 'resetPassword') {
+    return (
+      <ResetPasswordScreen
+        onReset={handleResetPassword}
+        onBackToSignIn={() => { setAuthView('signin'); setAuthError(''); setResetToken(null); setResetSuccess(false); }}
+        isLoading={isAuthLoading}
+        error={authError}
+        success={resetSuccess}
+      />
     );
   }
 
