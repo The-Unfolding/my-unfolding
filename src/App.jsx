@@ -304,7 +304,14 @@ const SignUpScreen = ({ onSignUp, onSwitchToSignIn, isLoading, error }) => {
           </button>
         </form>
         
-        <p className="text-center mt-6 text-sm" style={{ color: BRAND.warmGray }}>
+        <p className="text-center mt-4 text-xs leading-relaxed" style={{ color: BRAND.warmGray }}>
+          By signing up you agree to our{' '}
+          <a href="https://my-unfolding.vercel.app/terms" target="_blank" rel="noopener" className="underline">Terms of Service</a>
+          {' '}and{' '}
+          <a href="https://my-unfolding.vercel.app/privacy" target="_blank" rel="noopener" className="underline">Privacy Policy</a>
+        </p>
+
+        <p className="text-center mt-4 text-sm" style={{ color: BRAND.warmGray }}>
           Already have an account?{' '}
           <button onClick={onSwitchToSignIn} className="font-semibold" style={{ color: BRAND.charcoal }}>
             Sign in
@@ -933,6 +940,9 @@ export default function MyUnfolding() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [patterns, setPatterns] = useState(null);
   const [expandedEntry, setExpandedEntry] = useState(null);
+  const [editingEntry, setEditingEntry] = useState(null);
+  const [editText, setEditText] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
   const [patternTimeFilter, setPatternTimeFilter] = useState('week');
   const [historyTimeFilter, setHistoryTimeFilter] = useState('all');
   const [newIntention, setNewIntention] = useState('');
@@ -1359,8 +1369,9 @@ export default function MyUnfolding() {
     setCurrentPrompt(newPrompt);
   };
 
-  const saveEntry = () => {
+  const saveEntry = async () => {
     if (!currentEntry.trim()) return;
+    setIsSaving(true);
     const newEntry = {
       id: Date.now(),
       text: currentEntry,
@@ -1378,7 +1389,14 @@ export default function MyUnfolding() {
     setReflectOnIntentions(false);
 
     // Save to Supabase
-    if (user?.id) api.saveEntry(user.id, newEntry);
+    if (user?.id) {
+      try {
+        await api.saveEntry(user.id, newEntry);
+      } catch (err) {
+        console.error('Save failed, entry kept locally:', err);
+      }
+    }
+    setIsSaving(false);
     
     const milestones = [10, 25, 50, 100];
     if (milestones.includes(newEntries.length)) {
@@ -1551,6 +1569,54 @@ export default function MyUnfolding() {
       setExpandedEntry(null);
       // Delete from Supabase
       if (user?.id) api.deleteEntry(user.id, id);
+    }
+  };
+
+  const updateEntry = async (id, newText) => {
+    if (!newText.trim()) return;
+    setIsSaving(true);
+    setEntries(prev => prev.map(e => e.id === id ? { ...e, text: newText } : e));
+    setEditingEntry(null);
+    setEditText('');
+    // Update in Supabase
+    if (user?.id) {
+      try {
+        await fetch('/api/entries', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: user.id, entryId: id, text: newText })
+        });
+      } catch (err) {
+        console.error('Failed to update entry:', err);
+      }
+    }
+    setIsSaving(false);
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!confirm('Are you sure? This will permanently delete your account and ALL your journal entries. This cannot be undone.')) return;
+    if (!confirm('Really delete everything? Type carefully — there is no going back.')) return;
+    try {
+      const res = await fetch('/api/delete-account', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id })
+      });
+      if (res.ok) {
+        localStorage.removeItem('myUnfoldingAuth');
+        setUser(null);
+        setAccessType(null);
+        setEntries([]);
+        setIntentions([]);
+        setCompletedIntentions([]);
+        setPatterns(null);
+        setHasConsented(false);
+        setAuthView('signin');
+      } else {
+        alert('Could not delete account. Please try again or contact support.');
+      }
+    } catch {
+      alert('Network error. Please try again.');
     }
   };
 
@@ -2242,10 +2308,10 @@ export default function MyUnfolding() {
                         {currentEntry.trim() ? `${currentEntry.split(/\s+/).filter(Boolean).length} words` : ''}
                       </span>
                     </div>
-                    <button onClick={saveEntry} disabled={!currentEntry.trim()}
+                    <button onClick={saveEntry} disabled={!currentEntry.trim() || isSaving}
                       className="px-5 py-2 rounded-lg text-sm disabled:opacity-30"
-                      style={{ backgroundColor: currentEntry.trim() ? BRAND.charcoal : BRAND.lightGray, color: 'white' }}>
-                      Save entry
+                      style={{ backgroundColor: currentEntry.trim() && !isSaving ? BRAND.charcoal : BRAND.lightGray, color: 'white' }}>
+                      {isSaving ? 'Saving...' : 'Save entry'}
                     </button>
                   </div>
                 </>
@@ -2383,13 +2449,38 @@ export default function MyUnfolding() {
                         <p className={`leading-relaxed ${expandedEntry === entry.id ? '' : 'line-clamp-3'}`} style={{ color: BRAND.charcoal }}>{entry.text}</p>
                       )}
                     </div>
-                    {expandedEntry === entry.id && (
+                    {expandedEntry === entry.id && editingEntry === entry.id ? (
+                      <div className="px-5 pb-4">
+                        <textarea
+                          value={editText}
+                          onChange={(e) => setEditText(e.target.value)}
+                          className="w-full p-3 border rounded-lg text-sm leading-relaxed resize-none"
+                          style={{ borderColor: BRAND.lightGray, color: BRAND.charcoal, minHeight: '150px' }}
+                        />
+                        <div className="flex justify-between mt-2">
+                          <button onClick={() => { setEditingEntry(null); setEditText(''); }}
+                            className="text-xs px-3 py-1 rounded" style={{ color: BRAND.warmGray }}>
+                            Cancel
+                          </button>
+                          <button onClick={() => updateEntry(entry.id, editText)}
+                            disabled={isSaving}
+                            className="text-xs px-3 py-1 rounded font-medium"
+                            style={{ backgroundColor: BRAND.chartreuse, color: BRAND.charcoal }}>
+                            {isSaving ? 'Saving...' : 'Save'}
+                          </button>
+                        </div>
+                      </div>
+                    ) : expandedEntry === entry.id && (
                       <div className="px-5 pb-4 flex justify-between">
-                        <button onClick={() => {
-                          const subject = encodeURIComponent(`My Unfolding — ${formatFullDate(entry.date)}`);
-                          const body = encodeURIComponent(`${entry.prompt ? `"${entry.prompt}"\n\n` : ''}${entry.text}\n\n— Written ${formatFullDate(entry.date)}`);
-                          window.open(`mailto:?subject=${subject}&body=${body}`);
-                        }} className="text-xs" style={{ color: BRAND.warmGray }}>✉ Email</button>
+                        <div className="flex gap-4">
+                          <button onClick={() => {
+                            const subject = encodeURIComponent(`My Unfolding — ${formatFullDate(entry.date)}`);
+                            const body = encodeURIComponent(`${entry.prompt ? `"${entry.prompt}"\n\n` : ''}${entry.text}\n\n— Written ${formatFullDate(entry.date)}`);
+                            window.open(`mailto:?subject=${subject}&body=${body}`);
+                          }} className="text-xs" style={{ color: BRAND.warmGray }}>✉ Email</button>
+                          <button onClick={() => { setEditingEntry(entry.id); setEditText(entry.text); }}
+                            className="text-xs" style={{ color: BRAND.warmGray }}>✏️ Edit</button>
+                        </div>
                         <button onClick={() => deleteEntry(entry.id)} className="text-xs text-red-500">Delete</button>
                       </div>
                     )}
@@ -2986,11 +3077,18 @@ export default function MyUnfolding() {
               <p className="text-sm mb-4" style={{ color: BRAND.warmGray }}>
                 Signed in as {user?.email}
               </p>
-              <button onClick={handleSignOut}
-                className="px-4 py-2 rounded-lg text-sm"
-                style={{ backgroundColor: BRAND.cream, color: BRAND.charcoal, border: `1px solid ${BRAND.lightGray}` }}>
-                Sign out
-              </button>
+              <div className="flex gap-3">
+                <button onClick={handleSignOut}
+                  className="px-4 py-2 rounded-lg text-sm"
+                  style={{ backgroundColor: BRAND.cream, color: BRAND.charcoal, border: `1px solid ${BRAND.lightGray}` }}>
+                  Sign out
+                </button>
+                <button onClick={handleDeleteAccount}
+                  className="px-4 py-2 rounded-lg text-sm text-red-500"
+                  style={{ border: '1px solid #fecaca' }}>
+                  Delete account
+                </button>
+              </div>
             </div>
 
             <div className="bg-white rounded-xl border p-5 mb-6" style={{ borderColor: BRAND.lightGray }}>
