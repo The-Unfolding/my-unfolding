@@ -1617,7 +1617,7 @@ export default function MyUnfolding() {
     if (!confirm('Are you sure? This will permanently delete your account and ALL your journal entries. This cannot be undone.')) return;
     if (!confirm('Really delete everything? Type carefully — there is no going back.')) return;
     try {
-      const res = await fetch('/api/delete-account', {
+      const res = await fetch('/api/user-settings', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user.id })
