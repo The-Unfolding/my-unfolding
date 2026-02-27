@@ -51,6 +51,12 @@ const BRAND = {
   chartreuse: '#e2ff4d'
 };
 
+// Sanitize HTML to prevent XSS in print/email outputs
+const escapeHtml = (str) => {
+  if (!str) return '';
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+};
+
 // ============================================
 // API HELPERS — talk to Supabase via our endpoints
 // ============================================
@@ -161,7 +167,6 @@ const CORE_PROMPTS = {
   C: {
     name: 'CURIOSITY',
     desc: "Notice what's there",
-    audio: null,
     prompts: [
       "What keeps showing up in your mind lately — the thing you keep stepping over or pushing aside?",
       "We all carry many versions of ourselves — the achiever, the caretaker, the critic, the dreamer. Which one has been in charge lately? What does it want?",
@@ -178,7 +183,6 @@ const CORE_PROMPTS = {
   O: {
     name: 'OWN',
     desc: "Claim all of you",
-    audio: null,
     prompts: [
       "Where does what you're carrying right now live in your body? What happens when you stay with it instead of moving away?",
       "What emotion have you been managing instead of actually feeling?",
@@ -195,7 +199,6 @@ const CORE_PROMPTS = {
   R: {
     name: 'REWIRE',
     desc: "Choose new patterns",
-    audio: null,
     prompts: [
       "If you could change one thing you say to yourself on a hard day, what would the new version sound like?",
       "What's a small experiment you could try this week — a new response, a new habit, a new way of showing up?",
@@ -217,7 +220,6 @@ const CORE_PROMPTS = {
   E: {
     name: 'EMBODY',
     desc: "Build the life",
-    audio: null,
     prompts: [
       "Write about your ideal ordinary day — not a vacation, just a Tuesday that feels right. Use all your senses. What do you see, hear, taste, feel? How does your body move through it?",
       "What are you done with? What behaviors, habits, or ways of treating yourself are you no longer willing to accept?",
@@ -313,7 +315,8 @@ const VesselLogo = ({ size = 40, color = BRAND.charcoal }) => (
 
 // Auth Screen Components
 const AuthScreen = ({ children }) => (
-  <div className="min-h-screen flex items-center justify-center p-6" style={{ backgroundColor: BRAND.cream }}>
+  <div className="min-h-screen flex items-center justify-center p-6" style={{ backgroundColor: BRAND.cream, fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400;1,9..144,500&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300;1,400&display=swap" rel="stylesheet" />
     <div className="w-full max-w-sm">
       {children}
     </div>
@@ -334,7 +337,7 @@ const SignUpScreen = ({ onSignUp, onSwitchToSignIn, isLoading, error }) => {
       <div className="bg-white rounded-2xl p-8 shadow-sm">
         <div className="text-center mb-8">
           <VesselLogo size={40} color={BRAND.charcoal} />
-          <h1 className="text-2xl font-light italic mt-4" style={{ color: BRAND.charcoal }}>My Unfolding</h1>
+          <h1 className="text-2xl mt-4" style={{ color: BRAND.charcoal, fontFamily: "'Fraunces', Georgia, serif", fontWeight: 300, fontStyle: "italic" }}>My Unfolding</h1>
         </div>
         
         <form onSubmit={handleSubmit}>
@@ -410,7 +413,7 @@ const SignInScreen = ({ onSignIn, onSwitchToSignUp, onForgotPassword, isLoading,
       <div className="bg-white rounded-2xl p-8 shadow-sm">
         <div className="text-center mb-8">
           <VesselLogo size={40} color={BRAND.charcoal} />
-          <h1 className="text-2xl font-light italic mt-4" style={{ color: BRAND.charcoal }}>My Unfolding</h1>
+          <h1 className="text-2xl mt-4" style={{ color: BRAND.charcoal, fontFamily: "'Fraunces', Georgia, serif", fontWeight: 300, fontStyle: "italic" }}>My Unfolding</h1>
         </div>
         
         <form onSubmit={handleSubmit}>
@@ -547,7 +550,7 @@ const WelcomeScreen = ({ accessType, onContinue }) => (
         <span className="text-4xl">✓</span>
       </div>
       
-      <h1 className="text-2xl font-light mb-3" style={{ color: BRAND.charcoal }}>
+      <h1 className="text-2xl font-light mb-3" style={{ color: BRAND.charcoal, fontFamily: "'Fraunces', Georgia, serif", fontStyle: 'italic' }}>
         Welcome to My Unfolding
       </h1>
       
@@ -578,7 +581,7 @@ const OnboardingWriteScreen = ({ onNext }) => (
         <span className="text-5xl">✍️</span>
       </div>
       
-      <h1 className="text-xl font-medium text-center mb-4" style={{ color: BRAND.charcoal }}>
+      <h1 className="text-xl font-medium text-center mb-4" style={{ color: BRAND.charcoal, fontFamily: "'Fraunces', Georgia, serif" }}>
         How to write here
       </h1>
       
@@ -609,7 +612,7 @@ const OnboardingWriteScreen = ({ onNext }) => (
 const OnboardingBeforeScreen = ({ onComplete }) => (
   <AuthScreen>
     <div className="bg-white rounded-2xl p-8 shadow-sm">
-      <h1 className="text-xl font-medium text-center mb-6" style={{ color: BRAND.charcoal }}>
+      <h1 className="text-xl font-medium text-center mb-6" style={{ color: BRAND.charcoal, fontFamily: "'Fraunces', Georgia, serif" }}>
         Before you begin
       </h1>
       
@@ -668,7 +671,7 @@ const OnboardingCalendarScreen = ({ onComplete, onSkip }) => (
         <span className="text-5xl">📅</span>
       </div>
       
-      <h1 className="text-xl font-medium text-center mb-3" style={{ color: BRAND.charcoal }}>
+      <h1 className="text-xl font-medium text-center mb-3" style={{ color: BRAND.charcoal, fontFamily: "'Fraunces', Georgia, serif" }}>
         Make it a practice
       </h1>
       
@@ -1030,14 +1033,20 @@ function MyUnfoldingApp() {
   const recognitionRef = useRef(null);
   const guidedMessagesEndRef = useRef(null);
   const [saveStatus, setSaveStatus] = useState(null); // 'saving' | 'saved' | 'error' | 'offline'
+  const [draftSaved, setDraftSaved] = useState(false);
 
   // Auto-save draft to localStorage every 2 seconds
   useEffect(() => {
     if (currentEntry.trim()) {
+      setDraftSaved(false);
       const timer = setTimeout(() => {
         localStorage.setItem('myUnfoldingDraft', currentEntry);
+        setDraftSaved(true);
+        setTimeout(() => setDraftSaved(false), 2000);
       }, 2000);
       return () => clearTimeout(timer);
+    } else {
+      setDraftSaved(false);
     }
   }, [currentEntry]);
 
@@ -1604,7 +1613,7 @@ function MyUnfoldingApp() {
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: api._headers(),
         body: JSON.stringify({
           messages: newMessages.map(m => ({ role: m.role, content: m.content })),
           context: 'guided_reflection',
@@ -1665,7 +1674,7 @@ function MyUnfoldingApp() {
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: api._headers(),
         body: JSON.stringify({
           context: 'post_reflection',
           entryText: savedReflectionText,
@@ -1736,7 +1745,7 @@ function MyUnfoldingApp() {
       try {
         await fetch('/api/entries', {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          headers: api._headers(),
           body: JSON.stringify({ userId: user.id, entryId: id, text: newText })
         });
       } catch (err) {
@@ -1752,7 +1761,7 @@ function MyUnfoldingApp() {
     try {
       const res = await fetch('/api/user-settings', {
         method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
+        headers: api._headers(),
         body: JSON.stringify({ userId: user.id })
       });
       if (res.ok) {
@@ -2027,7 +2036,8 @@ function MyUnfoldingApp() {
     if (!chatInput.trim() || entries.length === 0) return;
     
     const userMessage = chatInput.trim();
-    setChatMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+    const updatedMessages = [...chatMessages, { role: 'user', content: userMessage }];
+    setChatMessages(updatedMessages);
     setChatInput('');
     setIsChatLoading(true);
     setChatChart(null);
@@ -2037,9 +2047,10 @@ function MyUnfoldingApp() {
     try {
       const response = await fetch("/api/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: api._headers(),
         body: JSON.stringify({
           message: userMessage,
+          messages: updatedMessages.slice(-10),
           entries: entries.slice(0, 30),
           wantsChart
         })
@@ -2091,12 +2102,22 @@ function MyUnfoldingApp() {
       alert(`Need at least 3 entries. Currently have ${filteredEntries.length}.`);
       return;
     }
+    
+    // Rate limit: minimum 60 seconds between analyses
+    const lastAnalysis = parseInt(localStorage.getItem('myUnfoldingLastAnalysis') || '0');
+    const secondsSince = (Date.now() - lastAnalysis) / 1000;
+    if (secondsSince < 60) {
+      alert(`Please wait ${Math.ceil(60 - secondsSince)} seconds before analyzing again.`);
+      return;
+    }
+    
     setIsAnalyzing(true);
+    localStorage.setItem('myUnfoldingLastAnalysis', Date.now().toString());
     
     try {
       const response = await fetch("/api/analyze", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: api._headers(),
         body: JSON.stringify({
           entries: filteredEntries.slice(0, 30),
           intentions: intentions,
@@ -2199,15 +2220,26 @@ function MyUnfoldingApp() {
 
   const NavButton = ({ active, onClick, children }) => (
     <button onClick={onClick}
-      className={`px-4 py-2 text-sm transition-colors ${active ? 'text-stone-800' : 'text-stone-400'}`}
-      style={active ? { borderBottom: `2px solid ${BRAND.chartreuse}` } : {}}>
+      className="text-sm transition-all"
+      style={{ 
+        padding: '8px 14px', 
+        borderRadius: '20px',
+        fontWeight: active ? 500 : 400,
+        backgroundColor: active ? BRAND.chartreuse : 'transparent',
+        color: active ? BRAND.charcoal : BRAND.warmGray,
+        border: 'none',
+        cursor: 'pointer',
+        marginBottom: '8px',
+        whiteSpace: 'nowrap'
+      }}>
       {children}
     </button>
   );
 
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: BRAND.cream }}>
+    <div className="min-h-screen" style={{ backgroundColor: BRAND.cream, fontFamily: "'DM Sans', system-ui, -apple-system, sans-serif" }}>
+      <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400;1,9..144,500&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300;1,400&display=swap" rel="stylesheet" />
       {showUpdateBanner && (
         <div className="fixed top-0 left-0 right-0 z-50 text-center py-2 px-4 cursor-pointer"
           style={{ backgroundColor: BRAND.chartreuse, color: BRAND.charcoal }}
@@ -2364,18 +2396,18 @@ function MyUnfoldingApp() {
       )}
 
       <header className="bg-white border-b sticky top-0 z-40" style={{ maxWidth: "100vw", overflowX: "hidden", borderColor: BRAND.lightGray }}>
-        <div className="mx-auto py-4" style={{ maxWidth: "100%", padding: "16px 8px", boxSizing: "border-box" }}>
-          <div className="flex items-center justify-between mb-4" style={{ maxWidth: "100%", overflow: "hidden" }}>
-            <div className="flex items-center" style={{ gap: "4px" }}>
-              <VesselLogo size={28} color={BRAND.charcoal} />
-              <h1 className="font-light italic" style={{ fontSize: "1rem", color: BRAND.charcoal }}>My Unfolding</h1>
-            </div>
+        <div className="mx-auto" style={{ maxWidth: "100%", padding: "14px 16px 0", boxSizing: "border-box" }}>
+          <div className="flex items-center justify-between mb-3" style={{ maxWidth: "100%", overflow: "hidden" }}>
             <div className="flex items-center" style={{ gap: "8px" }}>
-              <button onClick={() => setShowFeedback(true)} className="text-xs py-1 rounded-full" style={{ padding: "4px 6px", fontSize: "0.65rem", backgroundColor: BRAND.cream, color: BRAND.warmGray }}>Feedback</button>
-              <button onClick={() => setView('settings')} className="text-xl" style={{ color: BRAND.warmGray }}>⚙</button>
+              <VesselLogo size={30} color={BRAND.charcoal} />
+              <h1 style={{ fontSize: "1.1rem", color: BRAND.charcoal, fontFamily: "'Fraunces', Georgia, serif", fontWeight: 300, fontStyle: 'italic', letterSpacing: '-0.01em' }}>My Unfolding</h1>
+            </div>
+            <div className="flex items-center" style={{ gap: "10px" }}>
+              <button onClick={() => setShowFeedback(true)} className="text-xs rounded-full transition-opacity hover:opacity-70" style={{ padding: "5px 10px", fontSize: "0.7rem", backgroundColor: BRAND.cream, color: BRAND.warmGray, border: `1px solid ${BRAND.lightGray}` }}>Feedback</button>
+              <button onClick={() => setView('settings')} className="text-lg transition-opacity hover:opacity-70" style={{ color: BRAND.warmGray }}>⚙</button>
             </div>
           </div>
-          <nav className="flex" style={{ flexWrap: "wrap", gap: "4px", maxWidth: "100%" }}>
+          <nav className="flex" style={{ flexWrap: "wrap", gap: "4px", maxWidth: "100%", paddingBottom: "0" }}>
             <NavButton active={view === 'write'} onClick={() => setView('write')}>Write</NavButton>
             <NavButton active={view === 'history'} onClick={() => setView('history')}>History</NavButton>
             <NavButton active={view === 'patterns'} onClick={() => setView('patterns')}>Patterns</NavButton>
@@ -2385,7 +2417,7 @@ function MyUnfoldingApp() {
         </div>
       </header>
 
-      <main className="mx-auto py-8" style={{ maxWidth: "100%", padding: "32px 8px", boxSizing: "border-box", overflowX: "hidden" }}>
+      <main className="mx-auto py-8" style={{ maxWidth: "640px", padding: "24px 16px", boxSizing: "border-box", overflowX: "hidden" }}>
         
         {view === 'write' && (
           <div>
@@ -2401,15 +2433,28 @@ function MyUnfoldingApp() {
             <div className="mb-3" style={{ position: 'relative' }}>
               <button
                 onClick={() => setShowPrompts(!showPrompts)}
-                className="text-xs hover:opacity-80 transition-opacity"
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: BRAND.warmGray, padding: '4px 0', display: 'flex', alignItems: 'center', gap: '6px' }}
+                className="hover:opacity-80 transition-all"
+                style={{ 
+                  background: showPrompts ? 'white' : BRAND.cream, 
+                  border: `1px solid ${showPrompts ? BRAND.chartreuse : BRAND.lightGray}`, 
+                  borderRadius: showPrompts ? '12px 12px 0 0' : '12px',
+                  cursor: 'pointer', 
+                  color: BRAND.charcoal, 
+                  padding: '10px 14px', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '8px',
+                  fontSize: '13px',
+                  width: showPrompts ? '100%' : 'auto'
+                }}
               >
-                <span style={{ fontSize: '10px', transform: showPrompts ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease', display: 'inline-block' }}>▸</span>
-                Want prompts?
+                <span style={{ fontSize: '11px', transform: showPrompts ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease', display: 'inline-block', color: BRAND.warmGray }}>▸</span>
+                <span style={{ fontWeight: 500 }}>Want a prompt?</span>
+                <span style={{ fontSize: '12px', color: BRAND.warmGray }}>— choose a CORE lens</span>
               </button>
 
               {showPrompts && (
-                <div className="bg-white rounded-xl border p-4 mt-2" style={{ borderColor: BRAND.lightGray, boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+                <div className="bg-white rounded-b-xl border border-t-0 p-4" style={{ borderColor: BRAND.chartreuse, boxShadow: '0 4px 20px rgba(0,0,0,0.04)' }}>
                   <div className="flex items-center justify-between mb-3">
                     <p className="text-xs" style={{ color: BRAND.warmGray }}>
                       Choose a CORE lens to get a prompt — or just start writing.
@@ -2462,13 +2507,13 @@ function MyUnfoldingApp() {
             </div>
 
             {/* Writing area — the main event */}
-            <div className="bg-white rounded-xl border overflow-hidden" style={{ borderColor: BRAND.lightGray }}>
+            <div className="bg-white rounded-xl overflow-hidden" style={{ border: `1px solid ${BRAND.lightGray}`, boxShadow: '0 1px 8px rgba(42,42,40,0.04)' }}>
               {!isGuidedReflection ? (
                 <>
                   <textarea value={currentEntry} onChange={(e) => setCurrentEntry(e.target.value)}
                     placeholder="Write for at least 3 minutes. Write whatever comes, talk to yourself, question yourself, just let it flow."
                     className="w-full h-72 p-6 resize-none focus:outline-none text-lg leading-relaxed"
-                    style={{ color: BRAND.charcoal }} />
+                    style={{ color: BRAND.charcoal, fontFamily: "'DM Sans', system-ui, sans-serif", backgroundColor: currentEntry.trim() ? 'white' : '#fdfcf9' }} />
                   <div className="flex items-center justify-between px-6 py-4 border-t flex-wrap gap-2"
                     style={{ backgroundColor: BRAND.cream, borderColor: BRAND.lightGray }}>
                     <div className="flex items-center gap-2">
@@ -2509,13 +2554,14 @@ function MyUnfoldingApp() {
                     <div className="flex items-center gap-2">
                       {saveStatus === 'saved' && <span className="text-xs text-green-600">Saved ✓</span>}
                       {saveStatus === 'error' && <span className="text-xs text-amber-600">Saved locally — will sync when online</span>}
+                      {draftSaved && !saveStatus && <span className="text-xs" style={{ color: BRAND.warmGray }}>Draft saved</span>}
                       <span className="text-xs" style={{ color: BRAND.warmGray }}>
                         {currentEntry.trim() ? `${currentEntry.split(/\s+/).filter(Boolean).length} words` : ''}
                       </span>
                     </div>
                     <button onClick={saveEntry} disabled={!currentEntry.trim() || isSaving}
-                      className="px-5 py-2 rounded-lg text-sm disabled:opacity-30"
-                      style={{ backgroundColor: currentEntry.trim() && !isSaving ? BRAND.charcoal : BRAND.lightGray, color: 'white' }}>
+                      className="px-5 py-2 rounded-lg text-sm font-medium disabled:opacity-30 transition-all"
+                      style={{ backgroundColor: currentEntry.trim() && !isSaving ? BRAND.chartreuse : BRAND.lightGray, color: BRAND.charcoal }}>
                       {isSaving ? 'Saving...' : 'Save entry'}
                     </button>
                   </div>
@@ -2803,37 +2849,37 @@ function MyUnfoldingApp() {
                         </head>
                         <body>
                           <h1>My Unfolding - Pattern Analysis</h1>
-                          <p class="meta">${patterns.entryCount} entries analyzed • Generated ${new Date(patterns.generatedAt).toLocaleDateString()}</p>
+                          <p class="meta">${escapeHtml(patterns.entryCount)} entries analyzed • Generated ${escapeHtml(new Date(patterns.generatedAt).toLocaleDateString())}</p>
                           
                           <h2>Overview</h2>
                           <div class="section">
                             <h3>What you keep saying you want</h3>
-                            <p>${patterns.data.overview?.wanting || ''}</p>
+                            <p>${escapeHtml(patterns.data.overview?.wanting)}</p>
                             
                             <h3>Where you're winning</h3>
-                            <p>${patterns.data.overview?.winning || ''}</p>
+                            <p>${escapeHtml(patterns.data.overview?.winning)}</p>
                             
                             <h3>What's getting in the way</h3>
-                            <p>${patterns.data.overview?.blocking || ''}</p>
+                            <p>${escapeHtml(patterns.data.overview?.blocking)}</p>
                             
                             <h3>What you might be ready for</h3>
-                            <p>${patterns.data.overview?.ready || ''}</p>
+                            <p>${escapeHtml(patterns.data.overview?.ready)}</p>
                             
-                            ${patterns.data.overview?.question ? `<div class="question">${patterns.data.overview.question}</div>` : ''}
+                            ${patterns.data.overview?.question ? `<div class="question">${escapeHtml(patterns.data.overview.question)}</div>` : ''}
                           </div>
                           
                           ${['C', 'O', 'R', 'E'].map(phase => patterns.data[phase] ? `
                             <div class="phase">
-                              <div class="phase-title">${phase} - ${phase === 'C' ? 'Curiosity' : phase === 'O' ? 'Own' : phase === 'R' ? 'Rewire' : 'Embody'}</div>
-                              <p><strong>${patterns.data[phase].headline || ''}</strong></p>
-                              <p>${patterns.data[phase].insight || ''}</p>
-                              ${patterns.data[phase].underneath ? `<p class="underneath">${patterns.data[phase].underneath}</p>` : ''}
+                              <div class="phase-title">${escapeHtml(phase)} - ${phase === 'C' ? 'Curiosity' : phase === 'O' ? 'Own' : phase === 'R' ? 'Rewire' : 'Embody'}</div>
+                              <p><strong>${escapeHtml(patterns.data[phase].headline)}</strong></p>
+                              <p>${escapeHtml(patterns.data[phase].insight)}</p>
+                              ${patterns.data[phase].underneath ? `<p class="underneath">${escapeHtml(patterns.data[phase].underneath)}</p>` : ''}
                             </div>
                           ` : '').join('')}
                           
                           ${patterns.data.intentions ? `
                             <h2>Intentions</h2>
-                            <p>${patterns.data.intentions}</p>
+                            <p>${escapeHtml(patterns.data.intentions)}</p>
                           ` : ''}
                         </body>
                         </html>
@@ -3297,7 +3343,7 @@ function MyUnfoldingApp() {
         {view === 'settings' && (
           <div>
             <button onClick={() => setView('write')} className="text-sm mb-6" style={{ color: BRAND.warmGray }}>← Back</button>
-            <h2 className="text-xl font-light italic mb-6" style={{ color: BRAND.charcoal }}>Settings</h2>
+            <h2 className="text-xl font-light italic mb-6" style={{ color: BRAND.charcoal, fontFamily: "'Fraunces', Georgia, serif" }}>Settings</h2>
             
             <div className="bg-white rounded-xl border p-5 mb-6" style={{ borderColor: BRAND.lightGray }}>
               <h3 className="font-medium mb-3" style={{ color: BRAND.charcoal }}>Account</h3>
@@ -3309,11 +3355,6 @@ function MyUnfoldingApp() {
                   className="px-4 py-2 rounded-lg text-sm"
                   style={{ backgroundColor: BRAND.cream, color: BRAND.charcoal, border: `1px solid ${BRAND.lightGray}` }}>
                   Sign out
-                </button>
-                <button onClick={handleDeleteAccount}
-                  className="px-4 py-2 rounded-lg text-sm text-red-500"
-                  style={{ border: '1px solid #fecaca' }}>
-                  Delete account
                 </button>
               </div>
             </div>
@@ -3347,6 +3388,10 @@ function MyUnfoldingApp() {
                 <li>• <strong>Not therapy:</strong> This is for reflection only—use your judgment about AI insights</li>
                 <li>• <strong>Backups:</strong> Use Print to save copies</li>
               </ul>
+              <div className="flex gap-4 mt-4 pt-3 border-t" style={{ borderColor: BRAND.lightGray }}>
+                <a href="/terms" target="_blank" rel="noopener" className="text-xs underline" style={{ color: BRAND.warmGray }}>Terms of Service</a>
+                <a href="/privacy" target="_blank" rel="noopener" className="text-xs underline" style={{ color: BRAND.warmGray }}>Privacy Policy</a>
+              </div>
             </div>
 
             <div className="bg-white rounded-xl border p-5 mb-6" style={{ borderColor: BRAND.lightGray }}>
@@ -3358,17 +3403,22 @@ function MyUnfoldingApp() {
                 style={{ backgroundColor: BRAND.cream }}>🖨 Print backup</button>
             </div>
 
-            <div className="bg-white rounded-xl border p-5" style={{ borderColor: BRAND.lightGray }}>
-              <h3 className="font-medium mb-3 text-red-600">Danger Zone</h3>
-              <button onClick={handleDeleteAccount} className="text-sm text-red-500">Delete account & all data</button>
+            <div className="bg-white rounded-xl border p-5 mt-10" style={{ borderColor: '#fecaca' }}>
+              <h3 className="font-medium mb-2 text-red-600 text-sm">Danger Zone</h3>
+              <p className="text-xs mb-3" style={{ color: BRAND.warmGray }}>This action is permanent and cannot be undone.</p>
+              <button onClick={handleDeleteAccount} className="text-sm text-red-500 underline">Delete account & all data</button>
             </div>
           </div>
         )}
       <InstallAppPrompt />
       </main>
 
-      <footer className="mx-auto py-8 text-center" style={{ maxWidth: "100%", padding: "32px 8px", boxSizing: "border-box" }}>
-        <p className="text-xs" style={{ color: BRAND.lightGray }}>The Unfolding © {new Date().getFullYear()}</p>
+      <footer className="mx-auto py-8 text-center" style={{ maxWidth: "100%", padding: "32px 16px", boxSizing: "border-box" }}>
+        <p className="text-xs mb-2" style={{ color: BRAND.warmGray, fontFamily: "'Fraunces', Georgia, serif", fontStyle: 'italic' }}>The Unfolding © {new Date().getFullYear()}</p>
+        <div className="flex justify-center gap-4">
+          <a href="/terms" target="_blank" rel="noopener" className="text-xs" style={{ color: BRAND.lightGray }}>Terms</a>
+          <a href="/privacy" target="_blank" rel="noopener" className="text-xs" style={{ color: BRAND.lightGray }}>Privacy</a>
+        </div>
       </footer>
     </div>
   );
