@@ -1,7 +1,44 @@
 // /api/analyze.js - Pattern analysis endpoint
+import { verifyAuth } from '../lib/verify-auth.js';
+
+// Rate limiting — analysis is expensive, limit to once per 5 minutes per user
+const analysisLimits = new Map();
+const ANALYSIS_COOLDOWN_MS = 300000; // 5 minutes
+
+function checkAnalysisLimit(userId) {
+  const lastRequest = analysisLimits.get(userId);
+  const now = Date.now();
+  if (lastRequest && (now - lastRequest) < ANALYSIS_COOLDOWN_MS) {
+    const waitSeconds = Math.ceil((ANALYSIS_COOLDOWN_MS - (now - lastRequest)) / 1000);
+    return { allowed: false, waitSeconds };
+  }
+  analysisLimits.set(userId, now);
+  // Clean old entries
+  if (analysisLimits.size > 500) {
+    const cutoff = now - ANALYSIS_COOLDOWN_MS;
+    for (const [k, v] of analysisLimits) {
+      if (v < cutoff) analysisLimits.delete(k);
+    }
+  }
+  return { allowed: true };
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  // Verify auth
+  const auth = await verifyAuth(req);
+  if (auth.error) return res.status(auth.status).json({ error: auth.error });
+  const userId = auth.user.id;
+
+  // Rate limit check
+  const rateCheck = checkAnalysisLimit(userId);
+  if (!rateCheck.allowed) {
+    return res.status(429).json({ 
+      error: `Pattern analysis is available once every 5 minutes. Please wait ${rateCheck.waitSeconds} seconds.` 
+    });
   }
 
   const { entries, intentions, timeFilter } = req.body;
@@ -39,6 +76,12 @@ FRAMEWORK - Draw from evidence-based perspectives:
 - Values alignment (stated values vs. described choices)
 - Growth indicators (shifts in language over time, new awareness, breakthroughs noted)
 
+CRITICAL — The CORE framework uses these EXACT names (do not substitute):
+- C = Curiosity (noticing what's there) — NOT "Confront"
+- O = Own (feeling it fully)
+- R = Rewire (choosing a new story)
+- E = Embody (building the life) — NOT "Embed"
+
 TONE:
 - Warm but grounded - like a skilled therapist reflecting back
 - Use "you" - this is personal
@@ -56,7 +99,7 @@ Return your analysis as JSON in this exact format (no markdown, just raw JSON):
     "question": "One question that emerges from a genuine tension or contradiction in their entries."
   },
   "C": {
-    "headline": "A headline capturing what they're confronting (based on repeated themes)",
+    "headline": "A headline capturing what they're getting curious about (based on repeated themes)",
     "insight": "The pattern you see, with direct quotes. Note frequency: 'You wrote about X in Y entries.'",
     "underneath": "A reflection grounded in psychology - what this pattern often indicates, framed as possibility not certainty."
   },
