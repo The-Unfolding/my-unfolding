@@ -955,39 +955,6 @@ const InstallAppPrompt = () => {
   );
 };
 
-// Error Boundary — prevents blank screen on crash
-class ErrorBoundary extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = { hasError: false };
-  }
-  static getDerivedStateFromError() { return { hasError: true }; }
-  componentDidCatch(error, info) { console.error('App crash:', error, info); }
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="min-h-screen flex items-center justify-center p-6" style={{ backgroundColor: '#f5f2eb' }}>
-          <div className="bg-white rounded-2xl p-8 shadow-sm text-center max-w-sm">
-            <span className="text-4xl block mb-4">🫧</span>
-            <h1 className="text-xl font-medium mb-3" style={{ color: '#2a2a28' }}>Something went wrong</h1>
-            <p className="text-sm mb-6" style={{ color: '#6b6863' }}>Your entries are safe. Try refreshing.</p>
-            <button onClick={() => window.location.reload()}
-              className="px-6 py-3 rounded-xl font-semibold"
-              style={{ backgroundColor: '#e2ff4d', color: '#2a2a28' }}>
-              Refresh
-            </button>
-          </div>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
-
-function MyUnfoldingApp() {
-  return <ErrorBoundary><MyUnfoldingApp /></ErrorBoundary>;
-}
-
 function MyUnfoldingApp() {
   // Auth state
   const [authView, setAuthView] = useState('loading');
