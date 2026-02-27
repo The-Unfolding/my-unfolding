@@ -105,59 +105,79 @@ async function migrateLocalData(userId) {
 // CORE Framework prompts
 const CORE_PROMPTS = {
   C: {
-    name: 'CONFRONT',
-    desc: "What's running you",
+    name: 'CURIOSITY',
+    desc: "Notice what's there",
     audio: null,
     prompts: [
-      "What do I actually want from my leadership—not what I was taught to want?",
-      "What keeps showing up that I keep ignoring?",
-      "When do I feel most like myself as a leader?",
-      "Whose definition of 'good leader' am I still trying to meet?",
-      "What would I have to face if I stopped being so busy?",
-      "What have I already decided but won't admit?",
-      "If I trusted what I already know, what would I do differently?",
+      "What keeps showing up in your mind lately — the thing you keep stepping over or pushing aside?",
+      "We all carry many versions of ourselves — the achiever, the caretaker, the critic, the dreamer. Which one has been in charge lately? What does it want?",
+      "There's a voice that keeps showing up. What does it say — and how long has it been saying it?",
+      "What are you doing, thinking, or telling yourself on repeat that isn't actually working?",
+      "If you got quiet enough to hear what's underneath the noise — what is your body telling you? Where do you feel it?",
+      "What's going well right now that you haven't stopped to appreciate? What made that possible?",
+      "What do you already know but keep pretending you don't?",
+      "When do you feel most like yourself — most alive, most free? What's present in those moments that's missing right now?",
+      "What skill or strength of yours deserves more attention? What would happen if you actually leaned into it?",
+      "If the busiest, most controlled version of you could sit down and be honest — what's it been running from?",
     ]
   },
   O: {
     name: 'OWN',
-    desc: "What you're feeling",
+    desc: "Claim all of you",
     audio: null,
     prompts: [
-      "Where does leadership live in my body right now?",
-      "What emotion have I been managing instead of feeling?",
-      "What am I holding that isn't mine to carry?",
-      "Where in my body do I feel my own power?",
-      "What would I grieve if I admitted the truth?",
-      "What is my body asking for that I keep refusing?",
-      "What would it feel like to lead without bracing for impact?",
+      "Where does what you're carrying right now live in your body? What happens when you stay with it instead of moving away?",
+      "What emotion have you been managing instead of actually feeling?",
+      "There's a side of you that you don't let people see. What is it afraid people will say?",
+      "If your feelings today had a voice, what would they say? How old is this voice?",
+      "Something in you is carrying weight that may not be yours. What would you put down if you could?",
+      "What is your body asking for that you keep overriding?",
+      "If you didn't have to be strong right now — if no one was watching and nothing depended on you — what would come out?",
+      "What compliment do you have the hardest time accepting? What makes it so hard to let in?",
+      "What are you proud of that you rarely say out loud? Why do you keep it quiet?",
+      "When something good happens, do you let yourself fully feel it — or do you brace for what's next? What would it look like to just take it in?",
     ]
   },
   R: {
     name: 'REWIRE',
-    desc: "How you lead",
+    desc: "Choose new patterns",
     audio: null,
     prompts: [
-      "What does the leader I'm becoming believe about power?",
-      "What permission have I been waiting for that I could give myself?",
-      "When have I already led this way—even for a moment?",
-      "What would I have to believe about myself to lead differently?",
-      "What's one thing I keep saying I can't do—that I want to try?",
-      "How will the leader I'm becoming respond to what I'm avoiding?",
-      "What small action this week would prove the new story is true?",
+      "If you could change one thing you say to yourself on a hard day, what would the new version sound like?",
+      "What's a small experiment you could try this week — a new response, a new habit, a new way of showing up?",
+      "What permission have you been waiting for that you could give yourself — right now?",
+      "What would you do differently tomorrow if you trusted yourself more?",
+      "Think about a moment you handled something well recently. What can you learn from how you showed up?",
+      "What's one belief about yourself you're ready to trade in? What do you want to believe instead?",
+      "Who are you when you're at your best? What does that version of you do, say, and prioritize?",
+      "What's something kind you could start saying to yourself that you'd easily say to a friend?",
+      "What new habit — even a tiny one — would make you feel more like the person you want to be?",
+      "When have you already shown up as the person you're becoming — even for a moment? What made it possible?",
+      "What rule have you been living by that you never actually agreed to? What would you replace it with?",
+      "What assumption about how life, leadership, or success works are you ready to question? What would the opposite look like?",
+      "What would change if you stopped measuring yourself by someone else's definition of enough?",
+      "What's a completely different way to look at the thing that's been frustrating you?",
+      "What story about how the world works did you inherit — from family, culture, work — that you want to rewrite?",
     ]
   },
   E: {
-    name: 'EMBED',
-    desc: "What works",
+    name: 'EMBODY',
+    desc: "Build the life",
     audio: null,
     prompts: [
-      "What does my life need to look like to sustain the leader I'm becoming?",
-      "What boundaries would protect my energy this week?",
-      "What routine keeps me grounded—and am I actually doing it?",
-      "Who genuinely supports this version of me?",
-      "What's the first sign I'm slipping back?",
-      "Where am I still saying yes when I mean no?",
-      "What one thing would I protect at all costs?",
+      "Write about your ideal ordinary day — not a vacation, just a Tuesday that feels right. Use all your senses. What do you see, hear, taste, feel? How does your body move through it?",
+      "What are you done with? What behaviors, habits, or ways of treating yourself are you no longer willing to accept?",
+      "What's one thing you'd change about your day, your space, or your routine to support the new version of you?",
+      "What's one boundary that would be an act of self-respect this week?",
+      "Who genuinely supports the version of you that's emerging — and do they know it?",
+      "Imagine the conversation you want to be having six months from now — with yourself, a partner, a colleague. Where are you? What does your voice sound like? What do you feel in your chest?",
+      "Picture yourself a year from now, living in alignment. You're walking into a room where you feel completely at home. What does it look like? What do you hear? How does your body feel standing there?",
+      "What ritual, practice, or moment in your day keeps you connected to your center — are you actually doing it?",
+      "What's the first sign you're slipping back into the old pattern? What will you do the moment you notice?",
+      "If this new way of living became your default — what changes first?",
+      "Imagine the moment you realize the old pattern is gone. Where are you when it hits you? What does freedom feel like in your body?",
+      "What new habit — even a tiny one — would make your daily life feel more like yours?",
+      "What does your life need to look like to protect who you really are? What needs to go — and what needs more space?",
     ]
   }
 };
@@ -1424,13 +1444,13 @@ export default function MyUnfolding() {
     } else if (reflectOnIntentions) {
       openingMessage = "This is prompted journaling — I'll help you dig deeper. Your words become a journal entry.\n\nLet's reflect on your intentions. Pick one that's been on your mind and tell me how it's going.";
     } else if (selectedPhase === 'C') {
-      openingMessage = "This is prompted journaling — I'll help you dig deeper. Your words become a journal entry.\n\nYou're in Confront mode — what's something you've been avoiding looking at?";
+      openingMessage = "This is prompted journaling — I'll help you dig deeper. Your words become a journal entry.\n\nYou're in Curiosity mode — what's something you've been stepping over or pushing aside?";
     } else if (selectedPhase === 'O') {
-      openingMessage = "This is prompted journaling — I'll help you dig deeper. Your words become a journal entry.\n\nYou're in Own mode — where do you feel things in your body right now?";
+      openingMessage = "This is prompted journaling — I'll help you dig deeper. Your words become a journal entry.\n\nYou're in Own mode — what are you carrying right now? Where do you feel it in your body?";
     } else if (selectedPhase === 'R') {
-      openingMessage = "This is prompted journaling — I'll help you dig deeper. Your words become a journal entry.\n\nYou're in Rewire mode — what's a belief or pattern you're ready to let go of?";
+      openingMessage = "This is prompted journaling — I'll help you dig deeper. Your words become a journal entry.\n\nYou're in Rewire mode — what's a pattern or belief you're ready to trade in for something new?";
     } else if (selectedPhase === 'E') {
-      openingMessage = "This is prompted journaling — I'll help you dig deeper. Your words become a journal entry.\n\nYou're in Embed mode — what's working that you want to protect?";
+      openingMessage = "This is prompted journaling — I'll help you dig deeper. Your words become a journal entry.\n\nYou're in Embody mode — what would your life look like if you were fully living in alignment with the new version of you?";
     }
     
     setGuidedMessages([
@@ -2064,28 +2084,28 @@ export default function MyUnfolding() {
               About the CORE Framework
             </h3>
             <p className="text-sm mb-4" style={{ color: BRAND.warmGray }}>
-              CORE is The Unfolding's methodology for leadership transformation. It's designed specifically for women leaders who want to lead without losing themselves.
+              CORE is My Unfolding's guided reflection framework. It's designed to meet you where you are and help you build the life that's in alignment with the new version of you.
             </p>
             <div className="space-y-4 mb-6">
               <div className="p-3 rounded-lg" style={{ backgroundColor: BRAND.cream }}>
-                <p className="font-medium" style={{ color: BRAND.charcoal }}>C — CONFRONT</p>
-                <p className="text-sm" style={{ color: BRAND.warmGray }}>What's running you? Before you can lead differently, you have to see clearly what's driving your current patterns.</p>
+                <p className="font-medium" style={{ color: BRAND.charcoal }}>C — CURIOSITY</p>
+                <p className="text-sm" style={{ color: BRAND.warmGray }}>Notice what's there. Get curious about what's running in the background — the patterns, the voices, the things you keep stepping over.</p>
               </div>
               <div className="p-3 rounded-lg" style={{ backgroundColor: BRAND.cream }}>
                 <p className="font-medium" style={{ color: BRAND.charcoal }}>O — OWN</p>
-                <p className="text-sm" style={{ color: BRAND.warmGray }}>What are you feeling? Leadership lives in the body. Owning your emotional truth creates space for real change.</p>
+                <p className="text-sm" style={{ color: BRAND.warmGray }}>Claim all of you. Stop managing your feelings and start feeling them. Own the full picture — the hard stuff and the good stuff.</p>
               </div>
               <div className="p-3 rounded-lg" style={{ backgroundColor: BRAND.cream }}>
                 <p className="font-medium" style={{ color: BRAND.charcoal }}>R — REWIRE</p>
-                <p className="text-sm" style={{ color: BRAND.warmGray }}>How will you lead? This is where you actively build new patterns—new beliefs, new behaviors, new ways of showing up.</p>
+                <p className="text-sm" style={{ color: BRAND.warmGray }}>Choose new patterns. This is where you actively write new scripts — new self-talk, new beliefs, new ways of showing up.</p>
               </div>
               <div className="p-3 rounded-lg" style={{ backgroundColor: BRAND.cream }}>
-                <p className="font-medium" style={{ color: BRAND.charcoal }}>E — EMBED</p>
-                <p className="text-sm" style={{ color: BRAND.warmGray }}>What will you sustain? Real change requires building rituals that protect and reinforce your growth.</p>
+                <p className="font-medium" style={{ color: BRAND.charcoal }}>E — EMBODY</p>
+                <p className="text-sm" style={{ color: BRAND.warmGray }}>Build the life that's in alignment with the new version of you. Design the routines, boundaries, and environment that make the change stick.</p>
               </div>
             </div>
             <p className="text-sm italic mb-4" style={{ color: BRAND.warmGray }}>
-              This isn't generic AI. The prompts, the analysis, the questions—they're all designed through The Unfolding's approach to help you lead and live. Both are possible.
+              You don't have to go in order. Pick the phase that matches where you are today, or work through them as a journey. Each prompt stands on its own.
             </p>
             <button 
               onClick={() => setShowAboutCore(false)} 
@@ -2619,7 +2639,7 @@ export default function MyUnfolding() {
                           
                           ${['C', 'O', 'R', 'E'].map(phase => patterns.data[phase] ? `
                             <div class="phase">
-                              <div class="phase-title">${phase} - ${phase === 'C' ? 'Confront' : phase === 'O' ? 'Own' : phase === 'R' ? 'Rewire' : 'Embed'}</div>
+                              <div class="phase-title">${phase} - ${phase === 'C' ? 'Curiosity' : phase === 'O' ? 'Own' : phase === 'R' ? 'Rewire' : 'Embody'}</div>
                               <p><strong>${patterns.data[phase].headline || ''}</strong></p>
                               <p>${patterns.data[phase].insight || ''}</p>
                               ${patterns.data[phase].underneath ? `<p class="underneath">${patterns.data[phase].underneath}</p>` : ''}
