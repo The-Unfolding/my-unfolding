@@ -40,15 +40,28 @@ export default async function handler(req, res) {
     try {
       let validCode = null;
       if (inviteCode) {
-        const { data: codeData, error: codeError } = await supabase
-          .from('invite_codes').select('*').eq('code', inviteCode.toUpperCase()).eq('is_active', true).is('used_by', null).single();
-        if (codeError || !codeData) return res.status(400).json({ error: 'Invalid or already used invite code' });
-        validCode = codeData;
+        // Atomically claim the code — prevents race condition
+        const { data: claimed, error: claimError } = await supabase
+          .from('invite_codes')
+          .update({ used_by: 'pending', used_at: new Date().toISOString() })
+          .eq('code', inviteCode.toUpperCase())
+          .eq('is_active', true)
+          .is('used_by', null)
+          .select()
+          .single();
+        if (claimError || !claimed) return res.status(400).json({ error: 'Invalid or already used invite code' });
+        validCode = claimed;
       }
       const { data: authData, error: authError } = await supabase.auth.admin.createUser({
         email, password, email_confirm: true
       });
-      if (authError) return res.status(400).json({ error: authError.message });
+      if (authError) {
+        // Release the invite code if account creation failed
+        if (validCode) {
+          await supabase.from('invite_codes').update({ used_by: null, used_at: null }).eq('id', validCode.id);
+        }
+        return res.status(400).json({ error: authError.message });
+      }
       const userId = authData.user.id;
       const { error: profileError } = await supabase.from('profiles').insert({
         id: userId, email, access_type: validCode ? 'coaching' : 'none', invite_code_used: validCode ? validCode.code : null
@@ -57,37 +70,14 @@ export default async function handler(req, res) {
       if (validCode) {
         await supabase.from('invite_codes').update({ used_by: userId, used_at: new Date().toISOString() }).eq('id', validCode.id);
       }
-      return res.status(200).json({ success: true, user: { id: userId, email }, accessType: validCode ? 'coaching' : 'none' });
+      // Sign the user in to get a session token
+      const { data: signInData } = await supabase.auth.signInWithPassword({ email, password });
+      return res.status(200).json({ 
+        success: true, 
+        user: { id: userId, email }, 
+        accessType: validCode ? 'coaching' : 'none',
+        session: signInData?.session || null
+      });
     } catch (error) {
       console.error('Signup error:', error);
-      return res.status(500).json({ error: 'Failed to create account' });
-    }
-  }
-
-  if (action === 'reset-password') {
-    if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-    const { email } = req.body;
-    if (!email) return res.status(400).json({ error: 'Email required' });
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://my-unfolding.vercel.app';
-    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: siteUrl });
-    if (error) return res.status(500).json({ error: error.message });
-    return res.json({ success: true });
-  }
-
-  if (action === 'update-password') {
-    if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-    const { accessToken, newPassword } = req.body;
-    if (!accessToken || !newPassword) return res.status(400).json({ error: 'Token and new password required' });
-    if (newPassword.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
-    const userClient = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      accessToken,
-      { global: { headers: { Authorization: `Bearer ${accessToken}` } } }
-    );
-    const { error } = await userClient.auth.updateUser({ password: newPassword });
-    if (error) return res.status(500).json({ error: error.message });
-    return res.json({ success: true });
-  }
-
-  return res.status(404).json({ error: 'Unknown auth action' });
-}
+      return res.status(
