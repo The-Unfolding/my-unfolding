@@ -1,8 +1,39 @@
 // /api/chat.js - Chat with journal endpoint
+import { verifyAuth } from '../lib/verify-auth.js';
+
+// Simple in-memory rate limiting per user
+const rateLimits = new Map();
+const CHAT_COOLDOWN_MS = 3000; // 3 seconds between chat messages
+const CHART_COOLDOWN_MS = 10000; // 10 seconds between chart requests
+
+function checkRateLimit(userId, type = 'chat') {
+  const key = `${userId}:${type}`;
+  const cooldown = type === 'chart' ? CHART_COOLDOWN_MS : CHAT_COOLDOWN_MS;
+  const lastRequest = rateLimits.get(key);
+  const now = Date.now();
+  if (lastRequest && (now - lastRequest) < cooldown) {
+    return false;
+  }
+  rateLimits.set(key, now);
+  // Clean old entries periodically
+  if (rateLimits.size > 1000) {
+    const cutoff = now - 60000;
+    for (const [k, v] of rateLimits) {
+      if (v < cutoff) rateLimits.delete(k);
+    }
+  }
+  return true;
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  // Verify auth
+  const auth = await verifyAuth(req);
+  if (auth.error) return res.status(auth.status).json({ error: auth.error });
+  const userId = auth.user.id;
 
   const { message, messages, entries, wantsChart, context, phase, isIntentions, prompt, entryText } = req.body;
 
@@ -12,12 +43,16 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Entry text required' });
     }
 
+    if (!checkRateLimit(userId, 'chat')) {
+      return res.status(429).json({ error: 'Please wait a moment before requesting another insight.' });
+    }
+
     try {
       let phaseHint = '';
-      if (phase === 'C') phaseHint = ' They were in Confront mode (seeing what\'s really there).';
+      if (phase === 'C') phaseHint = ' They were in Curiosity mode (noticing what\'s there).';
       else if (phase === 'O') phaseHint = ' They were in Own mode (feeling it fully).';
       else if (phase === 'R') phaseHint = ' They were in Rewire mode (choosing a new story).';
-      else if (phase === 'E') phaseHint = ' They were in Embed mode (making it stick).';
+      else if (phase === 'E') phaseHint = ' They were in Embody mode (building the life).';
 
       const systemPrompt = `You just helped someone journal through prompted conversation. Now give them a brief reflection on what they wrote.
 
@@ -75,23 +110,25 @@ What they wrote:
       return res.status(400).json({ error: 'Messages required' });
     }
 
+    if (!checkRateLimit(userId, 'chat')) {
+      return res.status(429).json({ error: 'Please wait a moment.' });
+    }
+
     try {
-      // Build context-aware system prompt
       let phaseContext = '';
       
       if (prompt) {
-        // They have a specific journaling prompt - keep responses aligned with it
         phaseContext = `\n\nCONTEXT: They're reflecting on this prompt: "${prompt}". Keep your responses aligned with this theme.`;
       } else if (isIntentions) {
         phaseContext = `\n\nCONTEXT: They're reflecting on their intentions — the commitments they've set for themselves. Help them explore how those intentions are landing in real life.`;
       } else if (phase === 'C') {
-        phaseContext = `\n\nCONTEXT: They're in CONFRONT mode — seeing what's really there. This is about noticing patterns, facing hard truths, and naming what they've been avoiding.`;
+        phaseContext = `\n\nCONTEXT: They're in CURIOSITY mode — noticing what's there. This is about getting curious about patterns, facing hard truths, and naming what they've been avoiding.`;
       } else if (phase === 'O') {
         phaseContext = `\n\nCONTEXT: They're in OWN mode — feeling it fully. This is about embodiment, emotion, and what's happening in their body right now.`;
       } else if (phase === 'R') {
         phaseContext = `\n\nCONTEXT: They're in REWIRE mode — choosing a new story. This is about beliefs they want to change, new narratives, and what the leader they're becoming would do.`;
       } else if (phase === 'E') {
-        phaseContext = `\n\nCONTEXT: They're in EMBED mode — making it stick. This is about routines, boundaries, support systems, and protecting what's working.`;
+        phaseContext = `\n\nCONTEXT: They're in EMBODY mode — building the life. This is about routines, boundaries, support systems, and protecting what's working.`;
       }
 
       const systemPrompt = `You are a gentle reflection guide helping someone journal through conversation.
@@ -148,25 +185,35 @@ You're a mirror helping them hear themselves — warm, unhurried, and curious.${
     }
   }
 
-  // Original chat functionality (for Chat tab)
+  // Original chat functionality (for Ask my journal tab)
   if (!message || !entries || entries.length === 0) {
     return res.status(400).json({ error: 'Message and entries required' });
   }
 
   try {
-    const prompt = wantsChart 
-      ? `You are a coach helping a woman leader reflect on her journal. She wants to see data from her entries.
+    // Build the journal context
+    const journalContext = entries.slice(0, 30).map(e => `---\n${new Date(e.date).toLocaleDateString()} ${e.phase ? `[${e.phase}]` : ''}:\n"${e.text}"`).join('\n\n');
 
-IMPORTANT - The CORE framework phases are:
-- C = Confront (seeing what's really there)
-- O = Own (feeling it fully)
-- R = Rewire (choosing a new story)
-- E = Embed (making it stick)
+    if (wantsChart) {
+      if (!checkRateLimit(userId, 'chart')) {
+        return res.status(429).json({ error: 'Please wait before requesting another chart.' });
+      }
+
+      // Chart requests are single-shot
+      const chartPrompt = `You are a coach helping a woman leader reflect on her journal. She wants to see data from her entries.
+
+CRITICAL — Use these EXACT phase names (not alternatives):
+- C = "Curiosity" (NOT "Confront")
+- O = "Own"
+- R = "Rewire"
+- E = "Embody" (NOT "Embed")
+
+When labeling CORE phases in chart data, you MUST use: Curiosity, Own, Rewire, Embody.
 
 Return ONLY a JSON object (no other text) in this format:
 {
   "title": "Short title for the chart",
-  "description": "1-2 sentence insight about what this shows",
+  "description": "1-2 sentence insight about what this shows. Use the names Curiosity, Own, Rewire, Embody.",
   "type": "bar",
   "data": [
     { "label": "Label 1", "value": 5 },
@@ -179,31 +226,82 @@ Keep labels short. Max 8 data points.
 Her question: "${message}"
 
 Her entries:
-${entries.slice(0, 30).map(e => `---\n${new Date(e.date).toLocaleDateString()} ${e.phase ? `[${e.phase}]` : ''}:\n"${e.text}"`).join('\n\n')}`
-      : `You are a warm, direct coach helping a woman leader explore her journal.
+${journalContext}`;
 
-The CORE framework phases are:
-- C = Confront (seeing what's really there)
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": process.env.ANTHROPIC_API_KEY,
+          "anthropic-version": "2023-06-01"
+        },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 1500,
+          messages: [{ role: "user", content: chartPrompt }]
+        })
+      });
+
+      const data = await response.json();
+      if (data.error) {
+        console.error('Anthropic API error:', data.error);
+        return res.status(500).json({ error: 'Chat failed' });
+      }
+      const responseText = data.content?.[0]?.text || "";
+      try {
+        const cleanJson = responseText.replace(/\`\`\`json\n?/g, '').replace(/\`\`\`\n?/g, '').trim();
+        const chartData = JSON.parse(cleanJson);
+        // Force correct phase naming in chart labels
+        if (chartData.data) {
+          const nameMap = { 'Confront': 'Curiosity', 'Embed': 'Embody', 'confront': 'Curiosity', 'embed': 'Embody' };
+          chartData.data = chartData.data.map(d => ({
+            ...d,
+            label: nameMap[d.label] || d.label
+          }));
+        }
+        if (chartData.description) {
+          chartData.description = chartData.description.replace(/\bConfront\b/g, 'Curiosity').replace(/\bEmbed\b/g, 'Embody');
+        }
+        return res.status(200).json({ chart: chartData, text: chartData.description });
+      } catch (e) {
+        return res.status(200).json({ text: responseText });
+      }
+    }
+
+    // Conversational chat
+    if (!checkRateLimit(userId, 'chat')) {
+      return res.status(429).json({ error: 'Please wait a moment before sending another message.' });
+    }
+
+    const systemPrompt = `You are a warm, direct coach helping a woman leader explore her journal through conversation. You answer her questions AND follow up naturally — like a real conversation, not a search engine.
+
+The CORE framework phases are (use these EXACT names):
+- C = Curiosity (noticing what's there) — NOT "Confront"
 - O = Own (feeling it fully)
 - R = Rewire (choosing a new story)
-- E = Embed (making it stick)
+- E = Embody (building the life) — NOT "Embed"
 
-CRITICAL FORMATTING RULES:
+YOUR APPROACH:
+- Answer what she asked directly and specifically
+- When she responds to a follow-up you asked, acknowledge what she said and build on it naturally
+- Quote her journal words back when relevant
+- Be warm but direct — like a coach, not a chatbot
+- If you can't find something in her entries, say so briefly
+- Don't repeat yourself across messages — build on what you've already discussed
+
+FORMATTING:
 - Use bullet points for lists
 - Keep paragraphs to 2-3 sentences max
 - Use **bold** for emphasis
-- Never write walls of text
 - Be concise - quality over quantity
 
-TONE:
-- Warm but direct
-- Quote her words back when relevant
-- If you can't find something, say so briefly
-
-Her question: "${message}"
-
 Her journal entries:
-${entries.slice(0, 30).map(e => `---\n${new Date(e.date).toLocaleDateString()}:\n"${e.text}"`).join('\n\n')}`;
+${journalContext}`;
+
+    // Build conversation messages — use history if available, otherwise single message
+    const conversationMessages = (messages && messages.length > 0)
+      ? messages.map(m => ({ role: m.role, content: m.content }))
+      : [{ role: "user", content: message }];
 
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -215,10 +313,8 @@ ${entries.slice(0, 30).map(e => `---\n${new Date(e.date).toLocaleDateString()}:\
       body: JSON.stringify({
         model: "claude-sonnet-4-20250514",
         max_tokens: 1500,
-        messages: [{
-          role: "user",
-          content: prompt
-        }]
+        system: systemPrompt,
+        messages: conversationMessages
       })
     });
 
@@ -230,17 +326,6 @@ ${entries.slice(0, 30).map(e => `---\n${new Date(e.date).toLocaleDateString()}:\
     }
 
     const responseText = data.content?.[0]?.text || "";
-
-    if (wantsChart) {
-      try {
-        const cleanJson = responseText.replace(/\`\`\`json\n?/g, '').replace(/\`\`\`\n?/g, '').trim();
-        const chartData = JSON.parse(cleanJson);
-        return res.status(200).json({ chart: chartData, text: chartData.description });
-      } catch (e) {
-        return res.status(200).json({ text: responseText });
-      }
-    }
-
     return res.status(200).json({ text: responseText });
 
   } catch (error) {
