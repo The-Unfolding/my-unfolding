@@ -1034,6 +1034,7 @@ function MyUnfoldingApp() {
   const [showCelebration, setShowCelebration] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [showAboutCore, setShowAboutCore] = useState(false);
+  const [showPrompts, setShowPrompts] = useState(false);
   const [activePatternPhase, setActivePatternPhase] = useState('all');
   const [showGraph, setShowGraph] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
@@ -2429,73 +2430,88 @@ function MyUnfoldingApp() {
               className="hidden"
             />
             
-            <div className="mb-6 p-5 bg-white rounded-xl border" style={{ borderColor: BRAND.lightGray }}>
-              <div className="flex items-center justify-between mb-4">
-                <p className="text-xs leading-relaxed" style={{ color: BRAND.warmGray }}>
-                  Just start writing — say what's true right now. If you want a prompt, choose a CORE lens below.
-                </p>
-                <button 
-                  onClick={() => setShowAboutCore(true)}
-                  className="text-xs underline shrink-0 ml-2"
-                  style={{ color: BRAND.warmGray }}
-                >
-                  What's CORE?
-                </button>
-              </div>
-              <div className="flex gap-2 mb-4">
-                {['C', 'O', 'R', 'E'].map(phase => (
-                  <button key={phase} onClick={() => selectPhase(phase)}
-                    className="flex-1 px-2 py-3 rounded-lg text-sm transition-all"
-                    style={{ backgroundColor: selectedPhase === phase ? BRAND.chartreuse : BRAND.cream }}>
-                    <span className="text-xl font-light block" style={{ color: selectedPhase === phase ? BRAND.charcoal : BRAND.lightGray }}>{phase}</span>
-                    <span className="text-xs">{CORE_PROMPTS[phase].name}</span>
-                  </button>
-                ))}
-                <button onClick={selectIntentionReflection}
-                  className="px-3 py-3 rounded-lg text-sm transition-all"
-                  style={{ backgroundColor: reflectOnIntentions ? BRAND.chartreuse : BRAND.cream, border: `1px dashed ${BRAND.lightGray}` }}>
-                  <span className="text-xl block">✦</span>
-                  <span className="text-xs">Intentions</span>
-                </button>
-              </div>
-              
-              {(selectedPhase || reflectOnIntentions) && currentPrompt && (
-                <div className="p-4 rounded-lg" style={{ backgroundColor: BRAND.cream }}>
-                  <div className="flex items-start justify-between gap-4">
-                    <p className="text-sm italic" style={{ color: BRAND.charcoal }}>{currentPrompt}</p>
-                    {selectedPhase && (
-                      <button onClick={shufflePrompt} className="text-xs shrink-0" style={{ color: BRAND.warmGray }}>↻</button>
-                    )}
+            {/* Want prompts? — collapsible CORE selector */}
+            <div className="mb-3" style={{ position: 'relative' }}>
+              <button
+                onClick={() => setShowPrompts(!showPrompts)}
+                className="text-xs hover:opacity-80 transition-opacity"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: BRAND.warmGray, padding: '4px 0', display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                <span style={{ fontSize: '10px', transform: showPrompts ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease', display: 'inline-block' }}>▸</span>
+                Want prompts?
+              </button>
+
+              {showPrompts && (
+                <div className="bg-white rounded-xl border p-4 mt-2" style={{ borderColor: BRAND.lightGray, boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-xs" style={{ color: BRAND.warmGray }}>
+                      Choose a CORE lens to get a prompt — or just start writing.
+                    </p>
+                    <button 
+                      onClick={() => setShowAboutCore(true)}
+                      className="text-xs underline shrink-0 ml-2"
+                      style={{ color: BRAND.warmGray }}
+                    >
+                      What's CORE?
+                    </button>
                   </div>
-                  {reflectOnIntentions && intentions.length > 0 && (
-                    <div className="mt-3 pt-3 border-t" style={{ borderColor: BRAND.lightGray }}>
-                      <p className="text-xs mb-2" style={{ color: BRAND.warmGray }}>Your intentions:</p>
-                      {intentions.slice(0, 3).map(i => (
-                        <p key={i.id} className="text-xs mb-1" style={{ color: BRAND.charcoal }}>• {i.text}</p>
-                      ))}
+                  <div className="flex gap-2 mb-0">
+                    {['C', 'O', 'R', 'E'].map(phase => (
+                      <button key={phase} onClick={() => selectPhase(phase)}
+                        className="flex-1 px-2 py-3 rounded-lg text-sm transition-all"
+                        style={{ backgroundColor: selectedPhase === phase ? BRAND.chartreuse : BRAND.cream }}>
+                        <span className="text-xl font-light block" style={{ color: selectedPhase === phase ? BRAND.charcoal : BRAND.lightGray }}>{phase}</span>
+                        <span className="text-xs">{CORE_PROMPTS[phase].name}</span>
+                      </button>
+                    ))}
+                    <button onClick={selectIntentionReflection}
+                      className="px-3 py-3 rounded-lg text-sm transition-all"
+                      style={{ backgroundColor: reflectOnIntentions ? BRAND.chartreuse : BRAND.cream, border: `1px dashed ${BRAND.lightGray}` }}>
+                      <span className="text-xl block">✦</span>
+                      <span className="text-xs">Intentions</span>
+                    </button>
+                  </div>
+                  
+                  {(selectedPhase || reflectOnIntentions) && currentPrompt && (
+                    <div className="p-4 rounded-lg mt-3" style={{ backgroundColor: BRAND.cream }}>
+                      <div className="flex items-start justify-between gap-4">
+                        <p className="text-sm italic" style={{ color: BRAND.charcoal }}>{currentPrompt}</p>
+                        {selectedPhase && (
+                          <button onClick={shufflePrompt} className="text-xs shrink-0" style={{ color: BRAND.warmGray }}>↻</button>
+                        )}
+                      </div>
+                      {reflectOnIntentions && intentions.length > 0 && (
+                        <div className="mt-3 pt-3 border-t" style={{ borderColor: BRAND.lightGray }}>
+                          <p className="text-xs mb-2" style={{ color: BRAND.warmGray }}>Your intentions:</p>
+                          {intentions.slice(0, 3).map(i => (
+                            <p key={i.id} className="text-xs mb-1" style={{ color: BRAND.charcoal }}>• {i.text}</p>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
-
                 </div>
               )}
             </div>
 
+            {/* Writing area — the main event */}
             <div className="bg-white rounded-xl border overflow-hidden" style={{ borderColor: BRAND.lightGray }}>
               {!isGuidedReflection ? (
                 <>
                   <textarea value={currentEntry} onChange={(e) => setCurrentEntry(e.target.value)}
-                    placeholder="What's true right now?"
+                    placeholder="Write for at least 3 minutes. Write whatever comes, talk to yourself, question yourself, just let it flow."
                     className="w-full h-72 p-6 resize-none focus:outline-none text-lg leading-relaxed"
                     style={{ color: BRAND.charcoal }} />
-                  <div className="flex items-center justify-between px-6 py-4 border-t"
+                  <div className="flex items-center justify-between px-6 py-4 border-t flex-wrap gap-2"
                     style={{ backgroundColor: BRAND.cream, borderColor: BRAND.lightGray }}>
                     <div className="flex items-center gap-2">
                       <button 
                         onClick={() => fileInputRef.current?.click()}
                         disabled={isTranscribing || isRecording}
-                        className="text-xs px-3 py-1 rounded hover:opacity-70 disabled:opacity-50"
+                        className="text-xs px-3 py-1 rounded hover:opacity-70 disabled:opacity-50 flex items-center gap-1"
                         style={{ backgroundColor: BRAND.lightGray, color: BRAND.charcoal }}
                       >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                         {isTranscribing ? 'Processing...' : 'Upload'}
                       </button>
                       {voiceSupported && (
@@ -2520,7 +2536,7 @@ function MyUnfoldingApp() {
                         className="text-xs px-3 py-1 rounded hover:opacity-70 disabled:opacity-50"
                         style={{ backgroundColor: BRAND.cream, color: BRAND.charcoal, border: `1px solid ${BRAND.lightGray}` }}
                       >
-                        💬 Guided reflection
+                        💬 Guided
                       </button>
                     </div>
                     <div className="flex items-center gap-2">
