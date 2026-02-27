@@ -1,5 +1,47 @@
 import React, { useState, useEffect, useRef } from 'react';
 
+// Error Boundary — prevents white screen crashes, preserves draft
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error, info) {
+    console.error('App crashed:', error, info);
+  }
+  render() {
+    if (this.state.hasError) {
+      const draft = localStorage.getItem('myUnfoldingDraft');
+      return (
+        <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f5f2eb', padding: '24px' }}>
+          <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '32px', maxWidth: '400px', width: '100%', textAlign: 'center' }}>
+            <div style={{ fontSize: '48px', marginBottom: '16px' }}>🫧</div>
+            <h1 style={{ fontSize: '20px', fontWeight: '500', color: '#2a2a28', marginBottom: '8px' }}>Something went wrong</h1>
+            <p style={{ fontSize: '14px', color: '#6b6863', marginBottom: '24px' }}>
+              {draft ? "Don't worry — your draft is saved. Refresh to continue." : "Refresh the page to continue."}
+            </p>
+            {draft && (
+              <div style={{ backgroundColor: '#f5f2eb', borderRadius: '8px', padding: '12px', marginBottom: '16px', textAlign: 'left' }}>
+                <p style={{ fontSize: '12px', color: '#6b6863', marginBottom: '4px' }}>Your saved draft:</p>
+                <p style={{ fontSize: '13px', color: '#2a2a28' }}>{draft.substring(0, 200)}{draft.length > 200 ? '...' : ''}</p>
+              </div>
+            )}
+            <button 
+              onClick={() => window.location.reload()} 
+              style={{ backgroundColor: '#e2ff4d', color: '#2a2a28', border: 'none', borderRadius: '12px', padding: '12px 24px', fontSize: '14px', fontWeight: '600', cursor: 'pointer', width: '100%' }}>
+              Refresh
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 // Brand colors
 const BRAND = {
   cream: '#f5f2eb',
@@ -13,44 +55,56 @@ const BRAND = {
 // API HELPERS — talk to Supabase via our endpoints
 // ============================================
 const api = {
+  _getToken() {
+    try {
+      const auth = JSON.parse(localStorage.getItem('myUnfoldingAuth') || '{}');
+      return auth.token || null;
+    } catch { return null; }
+  },
+  _headers() {
+    const h = { 'Content-Type': 'application/json' };
+    const token = this._getToken();
+    if (token) h['Authorization'] = `Bearer ${token}`;
+    return h;
+  },
   async loadEntries(userId) {
     try {
-      const res = await fetch(`/api/entries?userId=${userId}`);
+      const res = await fetch(`/api/entries?userId=${userId}`, { headers: this._headers() });
       const data = await res.json();
       return data.entries || [];
     } catch { return []; }
   },
   async saveEntry(userId, entry) {
-    try { await fetch('/api/entries', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, entry }) }); } catch {}
+    try { await fetch('/api/entries', { method: 'POST', headers: this._headers(), body: JSON.stringify({ userId, entry }) }); } catch {}
   },
   async deleteEntry(userId, entryId) {
-    try { await fetch('/api/entries', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, entryId }) }); } catch {}
+    try { await fetch('/api/entries', { method: 'DELETE', headers: this._headers(), body: JSON.stringify({ userId, entryId }) }); } catch {}
   },
   async loadIntentions(userId) {
     try {
-      const res = await fetch(`/api/intentions?userId=${userId}`);
+      const res = await fetch(`/api/intentions?userId=${userId}`, { headers: this._headers() });
       const data = await res.json();
       return { intentions: data.intentions || [], completedIntentions: data.completedIntentions || [] };
     } catch { return { intentions: [], completedIntentions: [] }; }
   },
   async saveIntention(userId, intention) {
-    try { await fetch('/api/intentions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, intention }) }); } catch {}
+    try { await fetch('/api/intentions', { method: 'POST', headers: this._headers(), body: JSON.stringify({ userId, intention }) }); } catch {}
   },
   async updateIntention(userId, intentionId, isCompleted, completedAt) {
-    try { await fetch('/api/intentions', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, intentionId, is_completed: isCompleted, completed_at: completedAt }) }); } catch {}
+    try { await fetch('/api/intentions', { method: 'PUT', headers: this._headers(), body: JSON.stringify({ userId, intentionId, is_completed: isCompleted, completed_at: completedAt }) }); } catch {}
   },
   async deleteIntention(userId, intentionId) {
-    try { await fetch('/api/intentions', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, intentionId }) }); } catch {}
+    try { await fetch('/api/intentions', { method: 'DELETE', headers: this._headers(), body: JSON.stringify({ userId, intentionId }) }); } catch {}
   },
   async loadSettings(userId) {
     try {
-      const res = await fetch(`/api/user-settings?userId=${userId}`);
+      const res = await fetch(`/api/user-settings?userId=${userId}`, { headers: this._headers() });
       const data = await res.json();
       return data.settings || {};
     } catch { return {}; }
   },
   async saveSettings(userId, settings) {
-    try { await fetch('/api/user-settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, ...settings }) }); } catch {}
+    try { await fetch('/api/user-settings', { method: 'PUT', headers: this._headers(), body: JSON.stringify({ userId, ...settings }) }); } catch {}
   }
 };
 
@@ -326,9 +380,9 @@ const SignUpScreen = ({ onSignUp, onSwitchToSignIn, isLoading, error }) => {
         
         <p className="text-center mt-4 text-xs leading-relaxed" style={{ color: BRAND.warmGray }}>
           By signing up you agree to our{' '}
-          <a href="https://my-unfolding.vercel.app/terms" target="_blank" rel="noopener" className="underline">Terms of Service</a>
+          <a href="/terms" target="_blank" rel="noopener" className="underline">Terms of Service</a>
           {' '}and{' '}
-          <a href="https://my-unfolding.vercel.app/privacy" target="_blank" rel="noopener" className="underline">Privacy Policy</a>
+          <a href="/privacy" target="_blank" rel="noopener" className="underline">Privacy Policy</a>
         </p>
 
         <p className="text-center mt-4 text-sm" style={{ color: BRAND.warmGray }}>
@@ -421,8 +475,6 @@ const SignInScreen = ({ onSignIn, onSwitchToSignUp, onForgotPassword, isLoading,
 };
 
 const ChoosePlanScreen = ({ onSelectPlan, onBack, onInviteCode, isValidatingCode, codeError }) => {
-  const [selected, setSelected] = useState('annual');
-  const [showInviteCode, setShowInviteCode] = useState(false);
   const [inviteCode, setInviteCode] = useState('');
   
   const handleApplyCode = () => {
@@ -443,115 +495,44 @@ const ChoosePlanScreen = ({ onSelectPlan, onBack, onInviteCode, isValidatingCode
         
         <div className="text-center mb-6">
           <VesselLogo size={32} color={BRAND.charcoal} />
-          <h1 className="text-xl font-medium mt-3" style={{ color: BRAND.charcoal }}>Choose your plan</h1>
-          <p className="text-sm mt-1" style={{ color: BRAND.warmGray }}>Full access to everything. Cancel anytime.</p>
+          <h1 className="text-xl font-medium mt-3" style={{ color: BRAND.charcoal }}>Enter your invite code</h1>
+          <p className="text-sm mt-1" style={{ color: BRAND.warmGray }}>My Unfolding is currently invite-only.</p>
         </div>
         
-        {/* Invite Code Section */}
-        <div className="border rounded-xl p-4 mb-5" style={{ borderColor: BRAND.lightGray }}>
-          {!showInviteCode ? (
+        {/* Invite Code — Primary */}
+        <div className="mb-6">
+          <div className="flex gap-2">
+            <input 
+              type="text" 
+              placeholder="e.g. UNFOLD2026"
+              value={inviteCode}
+              onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+              onKeyDown={(e) => e.key === 'Enter' && handleApplyCode()}
+              className="flex-1 p-3 border rounded-lg text-sm uppercase"
+              style={{ borderColor: codeError ? '#e74c3c' : BRAND.lightGray, backgroundColor: BRAND.cream }}
+              autoFocus
+            />
             <button 
-              onClick={() => setShowInviteCode(true)}
-              className="w-full flex items-center gap-2 text-sm"
-              style={{ color: BRAND.charcoal }}>
-              <span>🎟️</span>
-              <span>Have an invite code?</span>
-              <span className="ml-auto" style={{ color: BRAND.warmGray }}>→</span>
+              onClick={handleApplyCode}
+              disabled={isValidatingCode || !inviteCode.trim()}
+              className="px-5 py-3 rounded-lg text-sm font-medium text-white disabled:opacity-50"
+              style={{ backgroundColor: BRAND.charcoal }}>
+              {isValidatingCode ? '...' : 'Continue'}
             </button>
-          ) : (
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <span>🎟️</span>
-                <span className="text-sm font-medium" style={{ color: BRAND.charcoal }}>Enter your invite code</span>
-              </div>
-              <div className="flex gap-2">
-                <input 
-                  type="text" 
-                  placeholder="e.g. SARAH2024"
-                  value={inviteCode}
-                  onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
-                  className="flex-1 p-3 border rounded-lg text-sm uppercase"
-                  style={{ borderColor: codeError ? '#e74c3c' : BRAND.lightGray, backgroundColor: BRAND.cream }}
-                />
-                <button 
-                  onClick={handleApplyCode}
-                  disabled={isValidatingCode}
-                  className="px-4 py-2 rounded-lg text-sm font-medium text-white disabled:opacity-50"
-                  style={{ backgroundColor: BRAND.charcoal }}>
-                  {isValidatingCode ? '...' : 'Apply'}
-                </button>
-              </div>
-              {codeError && (
-                <p className="text-xs text-red-500 mt-2">{codeError}</p>
-              )}
-              <button 
-                onClick={() => { setShowInviteCode(false); setInviteCode(''); }}
-                className="text-xs mt-2"
-                style={{ color: BRAND.warmGray }}>
-                Cancel
-              </button>
-            </div>
+          </div>
+          {codeError && (
+            <p className="text-xs text-red-500 mt-2">{codeError}</p>
           )}
         </div>
         
-        {/* Annual Plan */}
-        <div 
-          onClick={() => setSelected('annual')}
-          className="border-2 rounded-2xl p-5 mb-3 cursor-pointer relative"
-          style={{ 
-            backgroundColor: selected === 'annual' ? 'white' : BRAND.cream,
-            borderColor: selected === 'annual' ? BRAND.chartreuse : BRAND.lightGray 
-          }}>
-          {selected === 'annual' && (
-            <div className="absolute -top-2 right-4 px-3 py-1 rounded-full text-xs font-semibold"
-              style={{ backgroundColor: BRAND.chartreuse, color: BRAND.charcoal }}>
-              BEST VALUE
-            </div>
-          )}
-          <div className="flex justify-between items-center">
-            <div>
-              <p className="font-semibold" style={{ color: BRAND.charcoal }}>Annual</p>
-              <p className="text-sm" style={{ color: BRAND.warmGray }}>$6.58/month, billed yearly</p>
-            </div>
-            <div className="text-right">
-              <p className="text-2xl font-semibold" style={{ color: BRAND.charcoal }}>$79</p>
-              <p className="text-xs" style={{ color: BRAND.warmGray }}>/year</p>
-            </div>
-          </div>
-        </div>
-        
-        {/* Monthly Plan */}
-        <div 
-          onClick={() => setSelected('monthly')}
-          className="border-2 rounded-2xl p-5 mb-6 cursor-pointer"
-          style={{ 
-            backgroundColor: selected === 'monthly' ? 'white' : BRAND.cream,
-            borderColor: selected === 'monthly' ? BRAND.chartreuse : BRAND.lightGray 
-          }}>
-          <div className="flex justify-between items-center">
-            <div>
-              <p className="font-semibold" style={{ color: BRAND.charcoal }}>Monthly</p>
-              <p className="text-sm" style={{ color: BRAND.warmGray }}>Flexible, cancel anytime</p>
-            </div>
-            <div className="text-right">
-              <p className="text-2xl font-semibold" style={{ color: BRAND.charcoal }}>$9.99</p>
-              <p className="text-xs" style={{ color: BRAND.warmGray }}>/month</p>
-            </div>
-          </div>
-        </div>
-        
-        <button 
-          onClick={() => onSelectPlan(selected)}
-          className="w-full py-3 rounded-xl font-semibold"
-          style={{ backgroundColor: BRAND.chartreuse, color: BRAND.charcoal }}>
-          Continue to Payment
-        </button>
-        
-        <div className="mt-5">
-          <p className="text-xs font-medium mb-2" style={{ color: BRAND.charcoal }}>What's included:</p>
-          {['Unlimited journaling with CORE prompts', 'Guided reflection with AI', 'Pattern recognition', 'Ask your journal questions', 'Voice & image input'].map((item, i) => (
-            <p key={i} className="text-xs mb-1" style={{ color: BRAND.warmGray }}>✓ {item}</p>
-          ))}
+        <div className="text-center pt-4 border-t" style={{ borderColor: BRAND.lightGray }}>
+          <p className="text-xs" style={{ color: BRAND.warmGray }}>
+            Don't have a code? Subscriptions opening soon.
+          </p>
+          <p className="text-xs mt-2" style={{ color: BRAND.warmGray }}>
+            Questions? Email{' '}
+            <a href="mailto:coach@theunfoldingproject.org" className="underline" style={{ color: BRAND.charcoal }}>coach@theunfoldingproject.org</a>
+          </p>
         </div>
       </div>
     </AuthScreen>
@@ -676,6 +657,50 @@ const OnboardingBeforeScreen = ({ onComplete }) => (
       <p className="text-xs text-center mt-3 leading-relaxed" style={{ color: BRAND.warmGray }}>
         By continuing, you confirm you understand this is not professional advice.
       </p>
+    </div>
+  </AuthScreen>
+);
+
+const OnboardingCalendarScreen = ({ onComplete, onSkip }) => (
+  <AuthScreen>
+    <div className="bg-white rounded-2xl p-8 shadow-sm">
+      <div className="text-center mb-6">
+        <span className="text-5xl">📅</span>
+      </div>
+      
+      <h1 className="text-xl font-medium text-center mb-3" style={{ color: BRAND.charcoal }}>
+        Make it a practice
+      </h1>
+      
+      <p className="text-sm text-center mb-6 leading-relaxed" style={{ color: BRAND.warmGray }}>
+        Transformation happens when you show up consistently. Block 10 minutes a day for reflection — morning or evening works best.
+      </p>
+      
+      <button 
+        onClick={() => {
+          const title = encodeURIComponent("My Unfolding - Daily Reflection");
+          const details = encodeURIComponent("Time to reflect. Open My Unfolding and write what's true.\n\nhttps://my-unfolding.vercel.app");
+          const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&details=${details}&recur=RRULE:FREQ=DAILY`;
+          window.open(url, '_blank');
+        }}
+        className="w-full py-3 rounded-xl font-semibold mb-3"
+        style={{ backgroundColor: BRAND.chartreuse, color: BRAND.charcoal }}>
+        Add daily reminder to Google Calendar
+      </button>
+      
+      <button 
+        onClick={onComplete}
+        className="w-full py-3 rounded-xl font-semibold"
+        style={{ backgroundColor: BRAND.charcoal, color: 'white' }}>
+        Start journaling →
+      </button>
+      
+      <button 
+        onClick={onSkip}
+        className="w-full mt-3 text-sm"
+        style={{ color: BRAND.warmGray }}>
+        I'll do this later
+      </button>
     </div>
   </AuthScreen>
 );
@@ -930,7 +955,40 @@ const InstallAppPrompt = () => {
   );
 };
 
-export default function MyUnfolding() {
+// Error Boundary — prevents blank screen on crash
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() { return { hasError: true }; }
+  componentDidCatch(error, info) { console.error('App crash:', error, info); }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen flex items-center justify-center p-6" style={{ backgroundColor: '#f5f2eb' }}>
+          <div className="bg-white rounded-2xl p-8 shadow-sm text-center max-w-sm">
+            <span className="text-4xl block mb-4">🫧</span>
+            <h1 className="text-xl font-medium mb-3" style={{ color: '#2a2a28' }}>Something went wrong</h1>
+            <p className="text-sm mb-6" style={{ color: '#6b6863' }}>Your entries are safe. Try refreshing.</p>
+            <button onClick={() => window.location.reload()}
+              className="px-6 py-3 rounded-xl font-semibold"
+              style={{ backgroundColor: '#e2ff4d', color: '#2a2a28' }}>
+              Refresh
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+function MyUnfoldingApp() {
+  return <ErrorBoundary><MyUnfoldingApp /></ErrorBoundary>;
+}
+
+function MyUnfoldingApp() {
   // Auth state
   const [authView, setAuthView] = useState('loading');
   const [user, setUser] = useState(null);
@@ -995,14 +1053,57 @@ export default function MyUnfolding() {
   const [isLoadingInsight, setIsLoadingInsight] = useState(false);
   const [isLoadingData, setIsLoadingData] = useState(false);
   const fileInputRef = useRef(null);
+
+  // Email helper — opens native email with content
+  const emailContent = (subject, body) => {
+    const mailto = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.open(mailto);
+  };
   const recognitionRef = useRef(null);
   const guidedMessagesEndRef = useRef(null);
+  const [saveStatus, setSaveStatus] = useState(null); // 'saving' | 'saved' | 'error' | 'offline'
+
+  // Auto-save draft to localStorage every 2 seconds
+  useEffect(() => {
+    if (currentEntry.trim()) {
+      const timer = setTimeout(() => {
+        localStorage.setItem('myUnfoldingDraft', currentEntry);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [currentEntry]);
+
+  // Restore draft on load
+  useEffect(() => {
+    const draft = localStorage.getItem('myUnfoldingDraft');
+    if (draft && !currentEntry) {
+      setCurrentEntry(draft);
+    }
+  }, []);
 
   // ============================================
   // LOAD JOURNAL DATA FROM SUPABASE
   // ============================================
   const loadJournalData = async (userId) => {
     setIsLoadingData(true);
+    
+    // Process any queued offline saves first
+    try {
+      const queue = JSON.parse(localStorage.getItem('myUnfoldingOfflineQueue') || '[]');
+      if (queue.length > 0) {
+        console.log(`Processing ${queue.length} queued saves...`);
+        for (const item of queue) {
+          try {
+            if (item.type === 'saveEntry') await api.saveEntry(item.userId, item.entry);
+            else if (item.type === 'saveIntention') await api.saveIntention(item.userId, item.intention);
+            else if (item.type === 'updateIntention') await api.updateIntention(item.userId, item.intentionId, item.isCompleted, item.completedAt);
+          } catch (e) { console.error('Queue item failed:', e); }
+        }
+        localStorage.removeItem('myUnfoldingOfflineQueue');
+        console.log('Offline queue processed');
+      }
+    } catch (e) { /* ignore queue errors */ }
+
     try {
       // Check for localStorage data to migrate first
       const localData = localStorage.getItem('myUnfoldingJournal');
@@ -1122,7 +1223,11 @@ export default function MyUnfolding() {
       
       setUser(data.user);
       setAccessType(data.accessType);
-      localStorage.setItem('myUnfoldingAuth', JSON.stringify({ user: data.user, accessType: data.accessType }));
+      localStorage.setItem('myUnfoldingAuth', JSON.stringify({ 
+        user: data.user, 
+        accessType: data.accessType,
+        token: data.session?.access_token || null
+      }));
       
       if (data.accessType === 'coaching' || data.accessType === 'paid') {
         setAuthView('app');
@@ -1173,7 +1278,7 @@ export default function MyUnfolding() {
         if (signupRes.ok) {
           setUser(signupData.user);
           setAccessType('coaching');
-          localStorage.setItem('myUnfoldingAuth', JSON.stringify({ user: signupData.user, accessType: 'coaching' }));
+          localStorage.setItem('myUnfoldingAuth', JSON.stringify({ user: signupData.user, accessType: 'coaching', token: signupData.session?.access_token || null }));
           setAuthView('welcome');
         } else {
           setCodeError(signupData.error || 'Failed to apply code');
@@ -1260,6 +1365,47 @@ export default function MyUnfolding() {
     setVoiceSupported(!!SpeechRecognition);
   }, []);
 
+  // Listen for service worker updates — force refresh on new version
+  const [showUpdateBanner, setShowUpdateBanner] = useState(false);
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  useEffect(() => {
+    const goOffline = () => setIsOffline(true);
+    const goOnline = () => {
+      setIsOffline(false);
+      // Try to sync queued saves when coming back online
+      if (user?.id) loadJournalData(user.id);
+    };
+    window.addEventListener('offline', goOffline);
+    window.addEventListener('online', goOnline);
+    return () => {
+      window.removeEventListener('offline', goOffline);
+      window.removeEventListener('online', goOnline);
+    };
+  }, [user]);
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', (event) => {
+        if (event.data?.type === 'SW_UPDATED') {
+          setShowUpdateBanner(true);
+        }
+      });
+      // Also check for waiting service worker on load
+      navigator.serviceWorker.ready.then((reg) => {
+        if (reg.waiting) setShowUpdateBanner(true);
+        reg.addEventListener('updatefound', () => {
+          const newWorker = reg.installing;
+          if (newWorker) {
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                setShowUpdateBanner(true);
+              }
+            });
+          }
+        });
+      });
+    }
+  }, []);
+
   // Auth screens rendering
   if (authView === 'loading') {
     return (
@@ -1322,7 +1468,16 @@ export default function MyUnfolding() {
   
   if (authView === 'onboarding2') {
     return (
-      <OnboardingBeforeScreen onComplete={handleOnboardingComplete} />
+      <OnboardingBeforeScreen onComplete={() => setAuthView('onboardingCalendar')} />
+    );
+  }
+  
+  if (authView === 'onboardingCalendar') {
+    return (
+      <OnboardingCalendarScreen 
+        onComplete={handleOnboardingComplete}
+        onSkip={handleOnboardingComplete}
+      />
     );
   }
   
@@ -1412,8 +1567,18 @@ export default function MyUnfolding() {
     if (user?.id) {
       try {
         await api.saveEntry(user.id, newEntry);
+        setSaveStatus('saved');
+        localStorage.removeItem('myUnfoldingDraft');
+        setTimeout(() => setSaveStatus(null), 2000);
       } catch (err) {
-        console.error('Save failed, entry kept locally:', err);
+        console.error('Save failed, queuing for retry:', err);
+        setSaveStatus('error');
+        // Queue for offline retry
+        const queue = JSON.parse(localStorage.getItem('myUnfoldingOfflineQueue') || '[]');
+        queue.push({ type: 'saveEntry', userId: user.id, entry: newEntry, timestamp: Date.now() });
+        localStorage.setItem('myUnfoldingOfflineQueue', JSON.stringify(queue));
+        localStorage.removeItem('myUnfoldingDraft');
+        setTimeout(() => setSaveStatus(null), 3000);
       }
     }
     setIsSaving(false);
@@ -1691,6 +1856,13 @@ export default function MyUnfolding() {
     const file = event.target.files?.[0];
     if (!file) return;
     
+    // Size guard — Vercel Hobby plan has 4.5MB body limit, base64 adds ~33%
+    if (file.size > 3 * 1024 * 1024) {
+      alert('This image is too large. Try taking a screenshot of the page, or crop to a smaller section.');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+    
     setIsTranscribing(true);
     
     try {
@@ -1701,20 +1873,20 @@ export default function MyUnfolding() {
         mediaType = 'image/heic';
       }
       
-      const isHeic = file.name?.toLowerCase().endsWith('.heic') || file.name?.toLowerCase().endsWith('.heif') || mediaType === 'image/heic';
+      const isHeic = fileName.endsWith('.heic') || fileName.endsWith('.heif') || mediaType === 'image/heic';
       
       const base64 = await new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => {
           if (isHeic) {
-            // Browser can't render HEIC — send raw, server will convert
+            // HEIC — send raw, server will convert
             resolve(reader.result.split(',')[1]);
             return;
           }
           const img = new Image();
           img.onload = () => {
             const canvas = document.createElement('canvas');
-            const maxSize = 2500;
+            const maxSize = 2000; // slightly smaller for reliability
             let w = img.width, h = img.height;
             if (w > maxSize || h > maxSize) {
               if (w > h) { h = Math.round(h * maxSize / w); w = maxSize; }
@@ -1722,8 +1894,21 @@ export default function MyUnfolding() {
             }
             canvas.width = w;
             canvas.height = h;
-            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-            resolve(canvas.toDataURL('image/jpeg', 0.95).split(',')[1]);
+            const ctx = canvas.getContext('2d');
+            // White background for transparency
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, w, h);
+            ctx.drawImage(img, 0, 0, w, h);
+            // Higher quality JPEG for handwriting legibility
+            const result = canvas.toDataURL('image/jpeg', 0.92).split(',')[1];
+            // Final size check — base64 should be under 4MB for Vercel
+            if (result.length > 4_000_000) {
+              // Re-encode at lower quality
+              const smaller = canvas.toDataURL('image/jpeg', 0.7).split(',')[1];
+              resolve(smaller);
+            } else {
+              resolve(result);
+            }
           };
           img.onerror = () => {
             // Fallback: send raw if Image can't load it
@@ -1740,7 +1925,7 @@ export default function MyUnfolding() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           image: base64,
-          mediaType: mediaType || 'image/jpeg'
+          mediaType: isHeic ? 'image/heic' : 'image/jpeg'
         })
       });
       
@@ -1755,7 +1940,7 @@ export default function MyUnfolding() {
       }
     } catch (error) {
       console.error('Transcription error:', error);
-      alert('Could not transcribe the image. Try a different photo or take a screenshot of your journal page.');
+      alert(error.message || 'Could not transcribe the image. Try a different photo or take a screenshot of your journal page.');
     }
     
     setIsTranscribing(false);
@@ -2055,6 +2240,19 @@ export default function MyUnfolding() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: BRAND.cream }}>
+      {showUpdateBanner && (
+        <div className="fixed top-0 left-0 right-0 z-50 text-center py-2 px-4 cursor-pointer"
+          style={{ backgroundColor: BRAND.chartreuse, color: BRAND.charcoal }}
+          onClick={() => window.location.reload()}>
+          <span className="text-xs font-medium">✨ Update available — tap to refresh</span>
+        </div>
+      )}
+      {isOffline && (
+        <div className="fixed top-0 left-0 right-0 z-50 text-center py-2 px-4"
+          style={{ backgroundColor: BRAND.charcoal, color: BRAND.cream }}>
+          <span className="text-xs">✈️ You're offline — keep writing, entries will sync when you reconnect</span>
+        </div>
+      )}
       <Confetti active={showConfetti} />
       
       {showCelebration && (
@@ -2233,8 +2431,8 @@ export default function MyUnfolding() {
             
             <div className="mb-6 p-5 bg-white rounded-xl border" style={{ borderColor: BRAND.lightGray }}>
               <div className="flex items-center justify-between mb-4">
-                <p className="text-xs" style={{ color: BRAND.warmGray }}>
-                  Write freely, choose a lens and do one each day in sequence, or choose a prompt where you're focused.
+                <p className="text-xs leading-relaxed" style={{ color: BRAND.warmGray }}>
+                  Just start writing — say what's true right now. If you want a prompt, choose a CORE lens below.
                 </p>
                 <button 
                   onClick={() => setShowAboutCore(true)}
@@ -2277,7 +2475,7 @@ export default function MyUnfolding() {
                       ))}
                     </div>
                   )}
-                  {selectedPhase && <p className="text-xs mt-3 opacity-50" style={{ color: BRAND.warmGray }}>🎧 Audio coming soon</p>}
+
                 </div>
               )}
             </div>
@@ -2324,6 +2522,10 @@ export default function MyUnfolding() {
                       >
                         💬 Guided reflection
                       </button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {saveStatus === 'saved' && <span className="text-xs text-green-600">Saved ✓</span>}
+                      {saveStatus === 'error' && <span className="text-xs text-amber-600">Saved locally — will sync when online</span>}
                       <span className="text-xs" style={{ color: BRAND.warmGray }}>
                         {currentEntry.trim() ? `${currentEntry.split(/\s+/).filter(Boolean).length} words` : ''}
                       </span>
@@ -2808,6 +3010,18 @@ export default function MyUnfolding() {
                   </div>
                 )}
                 
+                <div className="flex gap-2 mb-4">
+                  <button
+                    onClick={() => {
+                      const o = patterns.data?.overview || {};
+                      const body = `MY PATTERNS — ${new Date(patterns.generatedAt).toLocaleDateString()}\n\nWhat I'm wanting: ${o.wanting || ''}\nWhat I'm winning: ${o.winning || ''}\nWhat's blocking me: ${o.blocking || ''}\nWhat I'm ready for: ${o.ready || ''}\n\n${o.question ? 'Question to sit with: ' + o.question : ''}\n\n${['C','O','R','E'].map(p => patterns.data[p] ? `${p} — ${patterns.data[p].headline}\n${patterns.data[p].insight}\n${patterns.data[p].underneath || ''}` : '').filter(Boolean).join('\n\n')}`;
+                      emailContent('My Unfolding — Pattern Analysis', body);
+                    }}
+                    className="text-xs px-3 py-1.5 rounded-lg flex items-center gap-1"
+                    style={{ backgroundColor: BRAND.cream, color: BRAND.charcoal, border: `1px solid ${BRAND.lightGray}` }}>
+                    ✉ Email to myself
+                  </button>
+                </div>
                 <div className="p-3 rounded-lg" style={{ backgroundColor: BRAND.cream }}>
                   <p className="text-xs" style={{ color: BRAND.warmGray }}>
                     These patterns are AI-generated to help you reflect. Not therapy or medical advice.
@@ -3003,6 +3217,16 @@ export default function MyUnfolding() {
               >
                 🖨 Print
               </button>
+              <button 
+                onClick={() => {
+                  const body = `MY INTENTIONS\n\nActive:\n${intentions.map(i => `• ${i.text} (${i.timeframe})`).join('\n')}\n\nCompleted:\n${completedIntentions.map(i => `✓ ${i.text}`).join('\n')}`;
+                  emailContent('My Unfolding — My Intentions', body);
+                }}
+                className="text-xs px-3 py-1 rounded"
+                style={{ backgroundColor: BRAND.lightGray }}
+              >
+                ✉ Email
+              </button>
             </div>
 
             <div className="p-4 rounded-lg mb-6 bg-white border" style={{ borderColor: BRAND.lightGray }}>
@@ -3153,17 +3377,7 @@ export default function MyUnfolding() {
 
             <div className="bg-white rounded-xl border p-5" style={{ borderColor: BRAND.lightGray }}>
               <h3 className="font-medium mb-3 text-red-600">Danger Zone</h3>
-              <button onClick={() => {
-                if (confirm('Delete ALL data? This cannot be undone.')) {
-                  if (confirm('Really delete everything?')) {
-                    setEntries([]);
-                    setIntentions([]);
-                    setCompletedIntentions([]);
-                    setPatterns(null);
-                    // TODO: Add API call to delete all data from Supabase
-                  }
-                }
-              }} className="text-sm text-red-500">Delete all data</button>
+              <button onClick={handleDeleteAccount} className="text-sm text-red-500">Delete account & all data</button>
             </div>
           </div>
         )}
@@ -3174,5 +3388,13 @@ export default function MyUnfolding() {
         <p className="text-xs" style={{ color: BRAND.lightGray }}>The Unfolding © {new Date().getFullYear()}</p>
       </footer>
     </div>
+  );
+}
+
+export default function MyUnfolding() {
+  return (
+    <ErrorBoundary>
+      <MyUnfoldingApp />
+    </ErrorBoundary>
   );
 }
